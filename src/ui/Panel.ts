@@ -42,6 +42,7 @@ export class Panel {
   private readonly picker = el('div', 'picker');
   private readonly equations = el('div', 'equations');
   private readonly status = el('div', 'status');
+  private readonly meter = el('div', 'meter');
   private readonly paramHost = el('div', 'tp-host');
   private readonly mainHost = el('div', 'tp-host');
   private paramPane?: Pane;
@@ -101,7 +102,12 @@ export class Panel {
     for (const [key, action] of shortcuts) list.append(el('dt', undefined, key), el('dd', undefined, action));
     help.append(list);
 
-    body.append(this.picker, this.equations, this.status, this.paramHost, this.mainHost, photos, help);
+    body.append(this.picker, this.equations, this.meter, this.status, this.paramHost, this.mainHost, photos, help);
+    this.meter.title =
+      'Largest Lyapunov exponent λ: how fast two almost identical starting states drift apart. ' +
+      'Positive = chaotic, about zero = periodic, negative = settles to a fixed point.';
+    // The estimate refines continuously; a few updates a second is plenty.
+    setInterval(() => this.renderMeter(), 250);
     this.root.append(head, body);
     document.body.appendChild(this.root);
 
@@ -262,6 +268,27 @@ export class Panel {
 
     const capture = pane.addFolder({ title: 'Capture', expanded: false });
     capture.addButton({ title: 'Save screenshot (PNG)' }).on('click', () => void app.saveScreenshot());
+  }
+
+  private renderMeter() {
+    if (this.root.hidden || this.root.classList.contains('collapsed')) return;
+    const r = this.app.chaos.reading();
+    const fmt = (v: number) => (Math.abs(v) >= 0.1 ? v.toFixed(2) : v.toFixed(3));
+    let detail: string;
+    if (r.verdict === 'measuring') detail = 'measuring…';
+    else if (r.verdict === 'diverges') detail = 'trajectories fly off to infinity';
+    else {
+      detail = `λ ≈ ${fmt(r.lambda)} ± ${fmt(r.error)} per ${r.unit}`;
+      if (r.verdict === 'chaotic') {
+        const t = r.doubling;
+        const unit = r.unit === 'iteration' ? (t === 1 ? 'iteration' : 'iterations') : 'time units';
+        detail += `<br>nearby paths separate 2× every ${t >= 10 ? t.toFixed(0) : t.toFixed(1)} ${unit}`;
+      }
+    }
+    this.meter.innerHTML =
+      `<span class="meter-label">Chaos meter</span>` +
+      `<span class="verdict verdict-${r.verdict.replace(' ', '-')}">${r.verdict}</span>` +
+      `<div class="meter-detail">${detail}</div>`;
   }
 
   /** Pull app state into the proxies and redraw bindings, without echoing change events back. */

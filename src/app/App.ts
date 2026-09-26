@@ -5,6 +5,7 @@ import { FamilyView } from '../scene/FamilyView';
 import { Stage } from '../scene/stage';
 import { Tweens } from '../scene/tween';
 import { euler, rk4 } from '../simulation/integrators';
+import { LyapunovMeter } from '../simulation/lyapunov';
 import { ParticleSystem, type SeedMode } from '../simulation/ParticleSystem';
 import type { ColorMode } from '../scene/shaders';
 
@@ -46,6 +47,8 @@ export class App {
   readonly sys: ParticleSystem;
   readonly view: AttractorView;
   readonly family: FamilyView;
+  /** Live largest-Lyapunov-exponent estimate for the current system and settings. */
+  readonly chaos: LyapunovMeter;
   private readonly tweens = new Tweens();
 
   paused = false;
@@ -81,6 +84,7 @@ export class App {
     this.sys = new ParticleSystem(ATTRACTORS[0]!, DEFAULT_PARTICLES, DEFAULT_TRAIL);
     this.view = new AttractorView(this.sys);
     this.family = new FamilyView(this.sys);
+    this.chaos = new LyapunovMeter(this.sys);
     this.view.setStyle({ particleSize: this.sys.attractor.particleSize });
     this.stage.scene.add(this.view.group);
     this.stage.overlay.add(this.family.group);
@@ -233,7 +237,12 @@ export class App {
     clearTimeout(this.reanalyzeTimer);
     this.reanalyzeTimer = setTimeout(() => {
       this.sys.reanalyze();
-      if (this.sys.analysis.ok) this.sys.respawnOutliers(3);
+      if (this.sys.analysis.ok) {
+        this.sys.respawnOutliers(3);
+        // Coming back from a setting where everything collapsed onto a fixed
+        // point, all particles would restart from one spot; spread them out.
+        if (!this.sys.analysis.collapsed && this.sys.spread() < 0.02) this.sys.reseed();
+      }
       // The attractors merged (parameters or dt): nothing left to tell apart.
       if (!this.sys.hasBasins && this.view.style.colorMode === 'attractor') {
         this.view.setStyle({ colorMode: this.colorModeBeforeBasins });
@@ -380,6 +389,8 @@ export class App {
       const realDt = Math.min(elapsed, 1 / 20);
       this.tweens.tick(now);
       if (!this.paused) this.sys.advance(realDt * this.attractor.simSpeed * this.speed);
+      // Measures parameters, not particles, so it keeps converging while paused.
+      this.chaos.tick();
       this.view.sync(realDt);
       this.family.sync(this.view.fade, this.stage.camera, this.view.projScale);
       this.stage.render();

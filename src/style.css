@@ -188,6 +188,59 @@ button {
   border-radius: 8px;
 }
 
+.meter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin-bottom: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  cursor: help;
+}
+
+.meter-label {
+  color: var(--text-dim);
+}
+
+.verdict {
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-dim);
+}
+
+.verdict-chaotic {
+  background: rgba(255, 120, 80, 0.2);
+  color: #ffb199;
+}
+
+.verdict-periodic {
+  background: rgba(80, 220, 200, 0.18);
+  color: #8ff0de;
+}
+
+.verdict-fixed-point {
+  background: rgba(140, 160, 255, 0.18);
+  color: #b8c4ff;
+}
+
+.verdict-diverges {
+  background: rgba(255, 170, 60, 0.18);
+  color: #ffcf8a;
+}
+
+.meter-detail {
+  flex-basis: 100%;
+  font-family: ui-monospace, 'Cascadia Code', Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
 .status {
   margin-bottom: 8px;
   padding: 8px 10px;

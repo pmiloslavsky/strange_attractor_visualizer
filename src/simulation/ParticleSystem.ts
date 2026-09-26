@@ -87,7 +87,7 @@ export class ParticleSystem {
   }
 
   /** Integrator actually used: maps are an Euler step with dt = 1 by definition (see defineMap). */
-  private get integrate(): Integrator {
+  get integrate(): Integrator {
     return this.attractor.kind === 'map' ? euler : this.integrator;
   }
 
@@ -165,6 +165,23 @@ export class ParticleSystem {
       }
     }
     if (any) this.fullDirty = true;
+  }
+
+  /**
+   * Largest distance of (up to 256 sampled) particles from their centroid, as
+   * a fraction of the attractor radius. Near 0 means they're all bunched up.
+   */
+  spread(): number {
+    const n = Math.min(this.count, STATS_SAMPLE);
+    const stride = this.count / n;
+    const c = [0, 0, 0];
+    for (let k = 0; k < n; k++) for (let a = 0; a < 3; a++) c[a]! += this.pos[3 * Math.floor(k * stride) + a]! / n;
+    let max = 0;
+    for (let k = 0; k < n; k++) {
+      const i = 3 * Math.floor(k * stride);
+      max = Math.max(max, Math.hypot(this.pos[i]! - c[0]!, this.pos[i + 1]! - c[1]!, this.pos[i + 2]! - c[2]!));
+    }
+    return max / this.analysis.radius;
   }
 
   /** Place every particle afresh (see SeedMode) and restart all trails. */
@@ -246,6 +263,11 @@ export class ParticleSystem {
    * close to each other (Newton–Leipnik's meet along a central spine), so a
    * short streak isn't enough: a particle still in transit can briefly look
    * settled. Returns −1 if it hasn't settled within the time budget.
+   *
+   * Known limit: a small fraction (~0.2% for Newton–Leipnik) make a long
+   * transient-chaos visit near one attractor before escaping to the other,
+   * and get the first label. Ruling that out needs 40+ time units per
+   * particle, too slow for interactive seeding.
    */
   private destination(x: number, y: number, z: number): number {
     const basins = this.analysis.basins;

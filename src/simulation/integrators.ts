@@ -1,12 +1,13 @@
 import type { Derivative, Vec3 } from '../attractors';
 
 /**
- * Integrators operate in place on a packed xyz Float32Array (the same layout
- * the GPU buffers use), advancing `count` particles by one step.
+ * Integrators operate in place on a packed xyz array (Float32Array for the
+ * particles, the same layout the GPU buffers use; Float64Array where precision
+ * matters, like the chaos meter), advancing `count` points by one step.
  */
 export type Integrator = (
   f: Derivative,
-  pos: Float32Array,
+  pos: Float32Array | Float64Array,
   count: number,
   p: readonly number[],
   dt: number,
