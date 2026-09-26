@@ -63,6 +63,8 @@ export interface AttractorDef<P extends readonly ParamSpec[] = readonly ParamSpe
    * one starting point known to reach each, and a region of starting points to
    * seed from when showing which attractor each start leads to.
    */
+  /** Default Poincaré section plane (axis 0/1/2 = x/y/z, at `offset`), where a classic one exists. */
+  readonly section?: { readonly axis: 0 | 1 | 2; readonly offset: number };
   /** Default parameter and range for the sweep / bifurcation diagram, where a classic one exists. */
   readonly sweep?: { readonly param: number; readonly from: number; readonly to: number };
   readonly basins?: {

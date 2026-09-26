@@ -6,6 +6,8 @@ import { Stage } from '../scene/stage';
 import { Tweens } from '../scene/tween';
 import { euler, rk4 } from '../simulation/integrators';
 import { LyapunovMeter } from '../simulation/lyapunov';
+import { PoincareSection } from '../simulation/poincare';
+import { SectionView } from '../scene/SectionView';
 import { ParticleSystem, type SeedMode } from '../simulation/ParticleSystem';
 import type { ColorMode } from '../scene/shaders';
 
@@ -49,6 +51,11 @@ export class App {
   readonly family: FamilyView;
   /** Live largest-Lyapunov-exponent estimate for the current system and settings. */
   readonly chaos: LyapunovMeter;
+  /** Poincaré section: collects crossings only while enabled (its panel section is open). */
+  readonly section = new PoincareSection();
+  private readonly sectionView: SectionView;
+  private sectionEnabled = false;
+  private sectionKey = '';
   private readonly tweens = new Tweens();
 
   paused = false;
@@ -85,6 +92,9 @@ export class App {
     this.view = new AttractorView(this.sys);
     this.family = new FamilyView(this.sys);
     this.chaos = new LyapunovMeter(this.sys);
+    this.sectionView = new SectionView(this.section);
+    this.view.group.add(this.sectionView.group);
+    this.resetSection();
     this.view.setStyle({ particleSize: this.sys.attractor.particleSize });
     this.stage.scene.add(this.view.group);
     this.stage.overlay.add(this.family.group);
@@ -136,6 +146,8 @@ export class App {
       this.sys.configure(count, trail);
     }
     this.view.setStyle({ particleSize: a.particleSize });
+    this.resetSection();
+    this.setSectionEnabled(this.sectionWanted); // maps have no section; re-evaluate for this system
     let glide: Promise<void>;
     if (this.sys.hasBasins) {
       // Several attractors: open with the basin demo, colored by destination.
@@ -300,6 +312,43 @@ export class App {
     if (ratio < 0.7 || ratio > 1.4 || moved) void this.frameCamera(800);
   }
 
+  // --- Poincaré section --------------------------------------------------------
+
+  /** Whether the UI asked for the section (it stays off on maps regardless). */
+  private sectionWanted = false;
+
+  setSectionEnabled(on: boolean) {
+    this.sectionWanted = on;
+    this.sectionEnabled = on && this.attractor.kind === 'flow';
+    this.sectionView.visible = this.sectionEnabled;
+    if (!on) this.section.clear();
+  }
+
+  /** Move the plane; clears the collected crossings. */
+  setSection(axis: 0 | 1 | 2, offset: number) {
+    this.section.set(axis, offset);
+    this.emit();
+  }
+
+  /** This system's default plane: its classic one if defined, else through the middle of its z range. */
+  resetSection() {
+    const a = this.attractor, r = this.sys.analysis.ranges;
+    const def = a.section ?? { axis: 2 as const, offset: (r[2]![0] + r[2]![1]) / 2 };
+    this.section.set(def.axis, def.offset);
+    this.section.clear();
+  }
+
+  /** Collect this frame's crossings; clears when the dynamics changed. */
+  private collectSection() {
+    if (!this.sectionEnabled) return;
+    const key = `${this.attractor.id}|${this.sys.params.join(',')}|${this.sys.dt}`;
+    if (key !== this.sectionKey) {
+      this.sectionKey = key;
+      this.section.clear();
+    }
+    this.section.collect(this.sys);
+  }
+
   // --- Particles & style -----------------------------------------------------
 
   /** Particle-count range for the current kind of system. */
@@ -433,7 +482,9 @@ export class App {
       }
       // Measures parameters, not particles, so it keeps converging while paused.
       this.chaos.tick();
+      this.collectSection(); // before view.sync, which consumes sys.lastWrite
       this.view.sync(realDt);
+      this.sectionView.sync(this.sys.analysis);
       this.family.sync(this.view.fade, this.stage.camera, this.view.projScale);
       this.stage.render();
     });

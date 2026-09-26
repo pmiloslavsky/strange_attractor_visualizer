@@ -378,6 +378,22 @@ button {
   margin-bottom: 6px;
 }
 
+.poincare input[type='range'] {
+  flex: 1;
+  width: 0;
+  padding: 0;
+  background: none;
+  accent-color: #ffb070;
+}
+
+.poincare-value {
+  min-width: 42px;
+  text-align: right;
+  font-family: ui-monospace, 'Cascadia Code', Menlo, monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
 /* Photo balls */
 
 .photos {

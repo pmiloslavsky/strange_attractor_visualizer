@@ -5,6 +5,7 @@ import { PALETTE_NAMES, type PaletteName } from '../scene/palettes';
 import { COLOR_MODES, type ColorMode } from '../scene/shaders';
 import { createFamilyTray } from './familyTray';
 import { paramLabel } from './labels';
+import { PoincarePanel } from './PoincarePanel';
 import { SweepSection } from './SweepSection';
 
 const CUSTOM = -1;
@@ -58,6 +59,7 @@ export class Panel {
   private basinsShown?: boolean;
   private readonly tray: ReturnType<typeof createFamilyTray>;
   private readonly sweep: SweepSection;
+  private readonly poincare: PoincarePanel;
 
   /** Proxies Tweakpane binds to; copied from / written to the app. */
   private readonly params: Record<string, number> = {};
@@ -105,7 +107,11 @@ export class Panel {
     help.append(list);
 
     this.sweep = new SweepSection(app);
-    body.append(this.picker, this.equations, this.meter, this.status, this.paramHost, this.sweep.root, this.mainHost, photos, help);
+    this.poincare = new PoincarePanel(app);
+    body.append(
+      this.picker, this.equations, this.meter, this.status, this.paramHost,
+      this.sweep.root, this.poincare.root, this.mainHost, photos, help,
+    );
     this.meter.title =
       'Largest Lyapunov exponent λ: how fast two almost identical starting states drift apart. ' +
       'Positive = chaotic, about zero = periodic, negative = settles to a fixed point.';
@@ -338,6 +344,7 @@ export class Panel {
     this.title.textContent = a.name;
     this.tray.refresh();
     this.sweep.refresh();
+    this.poincare.refresh();
     const an = app.sys.analysis;
     this.status.textContent = !an.ok
       ? 'These parameters diverge: particles fly off to infinity and keep respawning.'

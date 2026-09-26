@@ -22,6 +22,8 @@ export const rossler = defineAttractor({
   simSpeed: 3,
   // The textbook period-doubling route: one loop, two, four, … then chaos.
   sweep: { param: 2, from: 2, to: 12 },
+  // The classic section y = 0: one dot per loop.
+  section: { axis: 1, offset: 0 },
   derivative(x, y, z, [a, b, c], out) {
     out[0] = -(y + z);
     out[1] = a * y + x;

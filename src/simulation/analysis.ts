@@ -14,6 +14,8 @@ export interface Analysis {
   readonly samples: Float32Array;
   readonly center: Vec3;
   readonly radius: number;
+  /** Robust (1st–99th percentile) extent along x, y and z. */
+  readonly ranges: readonly [number, number][];
   /** Robust (percentile) range along the height axis (z for flows, y for maps), for height coloring. */
   readonly zRange: [number, number];
   /** Robust range of |d(x,y,z)/dt|, for speed coloring. */
@@ -89,6 +91,7 @@ export function analyze(a: Attractor, p: readonly number[], dt: number): Analysi
     samples,
     center: [0, 0, 0],
     radius: Math.max(Math.abs(lo), Math.abs(hi)) * Math.sqrt(3),
+    ranges: [[lo, hi], [lo, hi], [lo, hi]],
     zRange: [lo, hi],
     speedRange: [0, 1],
   };
@@ -186,6 +189,7 @@ function summarize(samples: Float32Array, speeds: Float32Array, heightAxis: numb
     samples,
     center,
     radius,
+    ranges,
     zRange: axisRange(samples, heightAxis, 0.02),
     speedRange: [speedLo, speedHi],
   };

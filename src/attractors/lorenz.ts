@@ -20,6 +20,8 @@ export const lorenz = defineAttractor({
   simSpeed: 0.5,
   // ρ: fixed points below ≈ 24.7, then chaos with periodic windows.
   sweep: { param: 2, from: 10, to: 100 },
+  // The plane z = ρ − 1 through the two off-center fixed points.
+  section: { axis: 2, offset: 27 },
   derivative(x, y, z, [sigma, beta, rho], out) {
     out[0] = sigma * (y - x);
     out[1] = x * (rho - z) - y;
