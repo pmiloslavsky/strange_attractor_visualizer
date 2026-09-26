@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ATTRACTORS, getAttractor } from '../attractors';
-import { analyze, nearest2 } from './analysis';
+import { analyze } from './analysis';
 import { ParticleSystem } from './ParticleSystem';
 
 describe('analyze', () => {
@@ -33,20 +33,42 @@ describe('Newton–Leipnik basins', () => {
   });
 
   it('labels region seeds with the attractor they actually reach', () => {
-    const sys = new ParticleSystem(nl, 24, 4);
+    const N = 200;
+    const sys = new ParticleSystem(nl, N, 4);
     sys.reseed('region');
     const labels = Array.from(sys.label);
-    expect(labels.filter((l) => l >= 0).length).toBeGreaterThan(20);
+    expect(labels.filter((l) => l < 0).length).toBeLessThan(N * 0.02);
     expect(new Set(labels.filter((l) => l >= 0)).size).toBe(2); // both basins sampled
-    // Run the real particles long enough to settle, then check they're where predicted.
-    for (let i = 0; i < 400; i++) sys.advance(0.1);
-    const probes = sys.analysis.basins!.probes;
-    labels.forEach((l, i) => {
-      if (l < 0) return;
-      const [x, y, z] = [sys.pos[3 * i]!, sys.pos[3 * i + 1]!, sys.pos[3 * i + 2]!];
-      const d = probes.map((p) => nearest2(p, x, y, z));
-      expect(d[l]).toBeLessThan(d[1 - l]!);
-    });
+    // Run the real particles, then judge by mean height over a long window:
+    // the attractors touch along a central spine, so a single instant can mislead.
+    // Upper attractor (label 0) averages z ≈ +0.23, lower (1) ≈ −0.12.
+    // Some particles bound for the upper one climb slowly (up to ~40 time
+    // units), so let them settle for 60 first.
+    for (let i = 0; i < 600; i++) sys.advance(0.1);
+    const zSum = new Float64Array(N);
+    for (let i = 0; i < 200; i++) {
+      sys.advance(0.1);
+      for (let p = 0; p < N; p++) zSum[p] = zSum[p]! + sys.pos[3 * p + 2]!;
+    }
+    const wrong = labels.filter((l, p) => l >= 0 && (zSum[p]! / 200 > 0.06 ? 0 : 1) !== l).length;
+    expect(wrong).toBe(0);
+  });
+});
+
+describe('butterfly cluster', () => {
+  it('starts tight and spreads across the attractor', () => {
+    const sys = new ParticleSystem(getAttractor('lorenz'), 200, 4);
+    sys.reseed('cluster');
+    const spread = () => {
+      let max = 0;
+      for (let i = 1; i < sys.count; i++) {
+        max = Math.max(max, Math.hypot(sys.pos[3*i]! - sys.pos[0]!, sys.pos[3*i+1]! - sys.pos[1]!, sys.pos[3*i+2]! - sys.pos[2]!));
+      }
+      return max / sys.analysis.radius;
+    };
+    expect(spread()).toBeLessThan(0.002);
+    for (let i = 0; i < 400; i++) sys.advance(0.1); // 40 time units
+    expect(spread()).toBeGreaterThan(0.5);
   });
 });
 

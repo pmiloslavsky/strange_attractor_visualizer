@@ -241,25 +241,29 @@ export class ParticleSystem {
    * forward with the same integrator, dt and float32 storage as the live
    * particles, so the answer matches where the particle really goes. The copy
    * is checked every CHECK steps against each attractor's probe points and is
-   * labeled once the same attractor is nearest, and close, several checks in
-   * a row. Returns −1 if it hasn't settled within the step budget.
+   * labeled once, after a minimum settling time, the same attractor has been
+   * nearest, and close, for AGREE checks in a row. The attractors can pass
+   * close to each other (Newton–Leipnik's meet along a central spine), so a
+   * short streak isn't enough: a particle still in transit can briefly look
+   * settled. Returns −1 if it hasn't settled within the time budget.
    */
   private destination(x: number, y: number, z: number): number {
     const basins = this.analysis.basins;
     if (!basins) return -1;
-    const CHECK = 250, MAX_STEPS = 40_000, AGREE = 3;
+    const CHECK = 250, AGREE = 5;
+    const minSteps = Math.ceil(2 / this.dt), maxSteps = Math.ceil(100 / this.dt); // model time units
     const near2 = (0.1 * this.analysis.radius) ** 2;
     const p = new Float32Array([x, y, z]);
     const integrate = this.integrate;
     let candidate = -1, streak = 0;
-    for (let s = 1; s <= MAX_STEPS; s++) {
+    for (let s = 1; s <= maxSteps; s++) {
       integrate(this.attractor.derivative, p, 1, this.params, this.dt);
       if (s % CHECK) continue;
       if (!(Math.abs(p[0]!) + Math.abs(p[1]!) + Math.abs(p[2]!) < 1e6)) return -1;
       const k = this.nearestBasin(p[0]!, p[1]!, p[2]!, near2);
       streak = k >= 0 && k === candidate ? streak + 1 : k >= 0 ? 1 : 0;
       candidate = k;
-      if (streak >= AGREE) return k;
+      if (streak >= AGREE && s >= minSteps) return k;
     }
     return -1;
   }

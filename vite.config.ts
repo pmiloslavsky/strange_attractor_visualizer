@@ -7,4 +7,10 @@ export default defineConfig({
   build: {
     target: 'es2022',
   },
+  server: {
+    // Native file events on Windows sometimes drop the second of two quick
+    // saves, leaving the dev server serving a stale module. Polling is cheap
+    // for a project this size and makes reloads reliable.
+    watch: { usePolling: true, interval: 150 },
+  },
 });

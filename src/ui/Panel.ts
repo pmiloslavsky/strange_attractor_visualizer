@@ -220,6 +220,9 @@ export class Panel {
       .on('change', guard((v: number) => app.setStyle({ particleSize: v })));
     sim.addBinding(state, 'paused').on('change', guard((v: boolean) => app.setPaused(v)));
     sim.addButton({ title: 'Reseed particles' }).on('click', () => app.reseed());
+    // Sensitive dependence, made visible: every particle starts within a
+    // ball a thousandth of the attractor's size, then they smear apart.
+    sim.addButton({ title: 'Butterfly effect: one tiny cluster' }).on('click', () => app.reseed('cluster'));
     this.basinOnly.push(
       sim.addButton({ title: 'Seed basin slice' }).on('click', () => app.reseed('region')),
     );

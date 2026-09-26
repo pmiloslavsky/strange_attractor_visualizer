@@ -13,6 +13,7 @@ const SHORTCUTS = [
   ['R', 'Auto-rotate on/off'],
   ['[ ]', 'Fewer / more particles'],
   ['- =', 'Shorter / longer trails'],
+  ['B', 'Butterfly effect: reseed as one tiny cluster'],
   ['F', 'Photo balls on/off'],
   ['S', 'Save screenshot'],
   ['Space', 'Pause'],
@@ -32,12 +33,16 @@ window.addEventListener('keydown', (e) => {
   const { view, sys } = app;
   const a = ATTRACTORS[Number(e.key) - 1];
   if (a) void app.switchTo(a);
-  else if (e.key === 'c') app.setStyle({ colorMode: next(COLOR_MODES, view.style.colorMode) });
+  else if (e.key === 'c') {
+    const modes = COLOR_MODES.filter((m) => sys.hasBasins || m !== 'attractor');
+    app.setStyle({ colorMode: next(modes, view.style.colorMode) });
+  }
   else if (e.key === 'p') app.setStyle({ palette: next(PALETTE_NAMES, view.style.palette) });
   else if (e.key === 'r') app.setAutoRotate(!app.stage.controls.autoRotate);
   else if (e.key === ' ') app.setPaused(!app.paused);
   else if (e.key === 'h') panel.toggleHidden();
   else if (e.key === 'f') app.setFamilyVisible(!app.family.visible);
+  else if (e.key === 'b') app.reseed('cluster');
   else if (e.key === 's') void app.saveScreenshot();
   else if (e.key === '[' || e.key === ']') app.setCount(sys.count * (e.key === ']' ? 1.5 : 1 / 1.5));
   else if (e.key === '-' || e.key === '=') app.setTrail(sys.trailLength * (e.key === '=' ? 1.5 : 1 / 1.5));
