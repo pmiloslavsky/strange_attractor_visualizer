@@ -80,6 +80,7 @@ export class Panel {
     autoRotate: true,
     autoFrame: true,
     ride: -1,
+    axes: false,
   };
 
   constructor(
@@ -275,6 +276,7 @@ export class Panel {
     cam
       .addBinding(state, 'autoFrame', { label: 'auto-frame' })
       .on('change', guard((v: boolean) => (app.autoFrame = v)));
+    cam.addBinding(state, 'axes', { label: 'x/y/z axes' }).on('change', guard((v: boolean) => app.setAxesVisible(v)));
     cam.addButton({ title: 'Frame attractor' }).on('click', () => void app.frameCamera(800));
     // Chase camera behind one of the photo-ball particles.
     const rideOptions: Record<string, number> = { off: -1 };
@@ -345,6 +347,7 @@ export class Panel {
       autoRotate: app.stage.controls.autoRotate,
       autoFrame: app.autoFrame,
       ride: app.ride ?? -1,
+      axes: app.axesVisible,
     });
 
     this.syncing = true;

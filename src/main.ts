@@ -15,6 +15,7 @@ const SHORTCUTS = [
   ['- =', 'Shorter / longer trails'],
   ['B', 'Butterfly effect: reseed as one tiny cluster'],
   ['V', 'Ride along with a photo ball (Esc to stop)'],
+  ['A', 'x/y/z axes on/off'],
   ['F', 'Photo balls on/off'],
   ['S', 'Save screenshot'],
   ['Space', 'Pause'],
@@ -44,6 +45,7 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === 'h') panel.toggleHidden();
   else if (e.key === 'f') app.setFamilyVisible(!app.family.visible);
   else if (e.key === 'b') app.reseed('cluster');
+  else if (e.key === 'a') app.setAxesVisible(!app.axesVisible);
   else if (e.key === 'v') app.ride === null ? app.startRide(0) : app.startRide((app.ride + 1) % 3);
   else if (e.key === 'Escape' && app.ride !== null) app.stopRide();
   else if (e.key === 's') void app.saveScreenshot();

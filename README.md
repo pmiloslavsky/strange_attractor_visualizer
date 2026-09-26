@@ -39,6 +39,48 @@ fly off and assemble into the two differently colored attractors:
 Where these equations come from, who discovered them, and links to the
 original papers: **[README_ATTRACTOR_HISTORY.md](README_ATTRACTOR_HISTORY.md)**.
 
+## Exploring the chaos
+
+Beyond looking pretty, the panel has tools for seeing *why* these systems are
+chaotic:
+
+- **Chaos meter.** A live estimate of the largest Lyapunov exponent λ: how
+  fast two almost identical states drift apart. It reports *chaotic*
+  (λ clearly positive), *periodic* (λ ≈ 0) or *fixed point* (λ negative), with
+  an error estimate and the time for a small separation to double. It uses the
+  same equations, dt and integrator as the particles. With Runge-Kutta 4 it
+  reproduces the published Lorenz value, λ ≈ 0.906.
+- **Butterfly effect.** One button (or B) restarts every particle inside a ball
+  a thousandth the size of the attractor. Within seconds the cluster smears
+  across the whole shape: sensitive dependence on initial conditions, made
+  visible.
+- **Parameter sweep & bifurcation diagram.** Pick a parameter and a range to
+  see what the system settles into at each value: one line for a simple loop,
+  lines splitting in two as the period doubles, then a smear once it turns
+  chaotic. Rössler's c is the textbook example. "Sweep" animates the live
+  simulation across the range with a cursor on the diagram, and clicking the
+  diagram jumps to that value.
+- **Poincaré section.** A plane you can slide through the attractor. Every time
+  a particle crosses it (upward) it leaves a dot, shown on the plane in 3D and
+  in a 2D plot. A periodic loop becomes a single dot and a strange attractor a
+  thin fractal curve, which reveals its layered structure. Classic planes are
+  preset for Lorenz (z = 27) and Rössler (y = 0).
+- **Ride along.** A chase camera that follows one of the photo balls through
+  the flow. Esc or dragging the view returns to the overview.
+- **Axes.** The original's reference axes: red x, green y, blue z from the
+  origin (A, or the Camera folder).
+
+### A note on numerical accuracy
+
+Like the original, the default integrator is simple Euler steps, and the
+step size can change the answer, not just the precision. The chaos meter made
+this visible. With Euler at the original's dt = 0.01, the chaotic Rössler
+attractor becomes a periodic loop, so its default here is dt = 0.002.
+Newton–Leipnik's two attractors merge into one at dt = 0.01, so its default
+is 0.002 too. Three-Scroll measures chaotic with Euler but close to periodic
+with Runge-Kutta 4, so treat its default with some suspicion. Switch the
+integrator in the Simulation folder to compare.
+
 ## Controls
 
 Drag to orbit (with inertia), scroll or pinch to zoom. The camera slowly
@@ -48,21 +90,24 @@ The control panel (a side panel on desktop, a pull-up sheet on phones) has:
 
 - **Attractor picker**: thumbnails of all eleven systems. Switching cross-fades
   and glides the camera to the new shape.
-- **Equations** of the current system.
+- **Equations** of the current system, and the **chaos meter**.
 - **Parameters**: a slider per parameter, with the original's ranges, plus a
   preset menu of the known interesting parameter sets. Picking a preset morphs
   the attractor smoothly. The panel warns you when a setting diverges or
   collapses to a fixed point.
+- **Parameter sweep & bifurcation diagram** and **Poincaré section** (see
+  above).
 - **Simulation**: dt, speed, integrator (the original's Euler or Runge-Kutta 4),
   particle count (up to 8,000; 400,000 for maps), trail length, particle
-  size, pause, reseed (plus "Seed basin slice" for Newton–Leipnik). Maps
-  always iterate one step at a time, so dt, integrator and trails don't apply
-  to them and are hidden.
+  size, pause, reseed, the butterfly-effect reseed, and "Seed basin slice" for
+  Newton–Leipnik. Maps always iterate one step at a time, so dt, integrator
+  and trails don't apply to them and are hidden.
 - **Color**: color by speed, age, height or particle (and by attractor for
   Newton–Leipnik); six palettes; color cycling; trail brightness.
 - **Glow**: bloom strength, radius and threshold.
 - **Camera**: auto-rotate and its speed, auto-framing when parameters resize
-  the attractor, and a button to re-frame.
+  the attractor, x/y/z axes, a button to re-frame, and "ride with" a photo
+  ball.
 - **Capture**: save a PNG screenshot.
 
 Keyboard:
@@ -74,6 +119,10 @@ Keyboard:
 | R | Toggle auto-rotate |
 | `[` `]` | Fewer / more particles |
 | `-` `=` | Shorter / longer trails |
+| B | Butterfly effect: restart as one tiny cluster |
+| V | Ride along with a photo ball (again: next ball) |
+| Esc | Stop riding |
+| A | Show / hide the x/y/z axes |
 | F | Show / hide the photo balls |
 | S | Save a PNG screenshot |
 | Space | Pause |
@@ -102,13 +151,16 @@ npm run build    # static output in dist/
 - `src/attractors/`: one file per system with equations, parameter ranges,
   example sets, default dt and particle size (ported from the original `DE`
   table).
-- `src/simulation/`: integrators, reference-trajectory analysis, and the
-  particle system with its trail ring buffer.
+  2D maps are defined with `defineMap`, as an Euler step with dt = 1.
+- `src/simulation/`: integrators, reference-trajectory analysis (including
+  multiple attractors), the particle system with its trail ring buffer, and
+  the analysis tools: Lyapunov meter, bifurcation diagram, Poincaré section.
 - `src/scene/`: Three.js stage (camera, controls, bloom), trail and particle
-  shaders, palettes, photo balls.
+  shaders, palettes, photo balls, section plane, axes.
 - `src/app/`: the `App` class tying simulation, view and camera together; the
   single API the panel and keyboard use.
-- `src/ui/`: the control panel (Tweakpane) and photo tray.
+- `src/ui/`: the control panel (Tweakpane), sweep and Poincaré sections, and
+  the photo tray.
 - `public/family/`: the default photo-ball images from the original project.
 - `public/thumbs/`: attractor picker thumbnails.
 

@@ -122,6 +122,14 @@ large enough the z term kicks them up and folds them back into the center. That
 stretch-and-fold is the basic mechanism of chaos. The Rössler system became a
 standard textbook example, including for period-doubling routes to chaos
 (increase c and watch simple loops double before the band turns chaotic).
+The visualizer's bifurcation diagram shows exactly this: one loop at c = 2.5,
+two by 3.5 (up to about 3.75), four from about 3.8 to 4.1, then chaos from
+about 4.15 (measured with the app's default integrator and step).
+
+The original program stepped Rössler with Euler at dt = 0.01. That turns out
+to be coarse enough to replace the chaotic c = 5.7 attractor with a periodic
+loop (the chaos meter reads λ ≈ 0), so this version defaults to dt = 0.002,
+where λ ≈ 0.06, close to the published value of about 0.071.
 
 - [Rössler attractor (Wikipedia)](https://en.wikipedia.org/wiki/R%C3%B6ssler_attractor)
 - [Rössler, O. E. (1976). An equation for continuous chaos. *Physics Letters A* 57(5): 397–398](https://doi.org/10.1016/0375-9601(76)90101-8)

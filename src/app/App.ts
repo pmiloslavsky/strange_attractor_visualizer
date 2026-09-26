@@ -8,6 +8,7 @@ import { euler, rk4 } from '../simulation/integrators';
 import { LyapunovMeter } from '../simulation/lyapunov';
 import { PoincareSection } from '../simulation/poincare';
 import { SectionView } from '../scene/SectionView';
+import { AxesView } from '../scene/AxesView';
 import { ParticleSystem, type SeedMode } from '../simulation/ParticleSystem';
 import type { ColorMode } from '../scene/shaders';
 
@@ -54,6 +55,8 @@ export class App {
   /** Poincaré section: collects crossings only while enabled (its panel section is open). */
   readonly section = new PoincareSection();
   private readonly sectionView: SectionView;
+  /** The original's x/y/z reference axes (off by default). */
+  private readonly axes = new AxesView();
   private sectionEnabled = false;
   private sectionKey = '';
   private readonly tweens = new Tweens();
@@ -93,7 +96,7 @@ export class App {
     this.family = new FamilyView(this.sys);
     this.chaos = new LyapunovMeter(this.sys);
     this.sectionView = new SectionView(this.section);
-    this.view.group.add(this.sectionView.group);
+    this.view.group.add(this.sectionView.group, this.axes.group);
     this.resetSection();
     this.view.setStyle({ particleSize: this.sys.attractor.particleSize });
     this.stage.scene.add(this.view.group);
@@ -454,6 +457,15 @@ export class App {
     this.emit();
   }
 
+  get axesVisible(): boolean {
+    return this.axes.visible;
+  }
+
+  setAxesVisible(on: boolean) {
+    this.axes.visible = on;
+    this.emit();
+  }
+
   setAutoRotate(on: boolean) {
     this.stage.controls.autoRotate = on;
     this.emit();
@@ -547,6 +559,7 @@ export class App {
       this.collectSection(); // before view.sync, which consumes sys.lastWrite
       this.view.sync(realDt);
       this.sectionView.sync(this.sys.analysis);
+      this.axes.sync(this.sys.analysis, this.attractor.kind === 'map');
       this.updateRide(realDt);
       this.family.sync(this.view.fade, this.stage.camera, this.view.projScale, this.ride);
       this.stage.render();
