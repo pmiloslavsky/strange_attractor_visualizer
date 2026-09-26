@@ -1,0 +1,86 @@
+/**
+ * Attractor metadata + ODE, ported from the original C++ `StrangeAttractorDE`
+ * struct and its `apply_*_de` functions.
+ *
+ * The C++ baked explicit Euler into each apply_* function
+ * (`x + dt * f(x)`). Here each attractor only supplies the vector field
+ * f(x, y, z) — the math inside the parentheses, verbatim — and the integrator
+ * is chosen separately (see src/simulation/integrators.ts). `eulerStep` below
+ * reproduces the original step exactly.
+ */
+
+export type Vec3 = [number, number, number];
+
+export interface ParamSpec {
+  readonly name: string;
+  /** Slider range, from the original `MinMax` table. */
+  readonly min: number;
+  readonly max: number;
+}
+
+/** Map a tuple of ParamSpecs to a same-length tuple of numbers. */
+export type ParamValues<P extends readonly ParamSpec[]> = { readonly [K in keyof P]: number };
+
+/**
+ * Writes d(x,y,z)/dt into `out`. Out-param rather than a returned array so the
+ * hot loop (particles × steps per frame) doesn't allocate.
+ */
+export type Derivative<P extends readonly ParamSpec[] = readonly ParamSpec[]> = (
+  x: number,
+  y: number,
+  z: number,
+  p: ParamValues<P>,
+  out: Vec3,
+) => void;
+
+export interface AttractorDef<P extends readonly ParamSpec[] = readonly ParamSpec[]> {
+  readonly id: string;
+  readonly name: string;
+  /** Human-readable system, one line per axis, for display in the UI. */
+  readonly equations: readonly [string, string, string];
+  readonly params: P;
+  /** Known interesting parameter sets. `examples[0]` is the default. */
+  readonly examples: readonly ParamValues<P>[];
+  /** Default integration step (original `dt`). */
+  readonly dt: number;
+  /** Default particle size (original `particle_size`). */
+  readonly particleSize: number;
+  /** Initial positions are drawn uniformly from this range on each axis (original `RandMinMax`). */
+  readonly seedRange: readonly [number, number];
+  /**
+   * Model time advanced per second of real time. Not in the original (which
+   * took one step per frame); tuned per system so each moves at a pleasant pace.
+   */
+  readonly simSpeed: number;
+  readonly derivative: Derivative<P>;
+}
+
+/** Type-erased form used by the registry and the rest of the app. */
+export type Attractor = AttractorDef<readonly ParamSpec[]>;
+
+/**
+ * Identity helper whose only job is type-checking: it ties the length of every
+ * example set and the derivative's `p` tuple to the length of `params`, so a
+ * missing or extra parameter is a compile error instead of a runtime NaN.
+ */
+export function defineAttractor<const P extends readonly ParamSpec[]>(def: AttractorDef<P>): Attractor {
+  return def as unknown as Attractor;
+}
+
+const scratch: Vec3 = [0, 0, 0];
+
+/**
+ * One explicit Euler step — exactly what the original `apply_*_de` functions
+ * computed (minus the reference-frame rotation, which the camera now handles).
+ */
+export function eulerStep(
+  a: Attractor,
+  x: number,
+  y: number,
+  z: number,
+  p: readonly number[],
+  dt: number,
+): Vec3 {
+  a.derivative(x, y, z, p, scratch);
+  return [x + dt * scratch[0], y + dt * scratch[1], z + dt * scratch[2]];
+}
