@@ -4,8 +4,9 @@ import { LIMITS, type App, type IntegratorName } from '../app/App';
 import { PALETTE_NAMES, type PaletteName } from '../scene/palettes';
 import { COLOR_MODES, type ColorMode } from '../scene/shaders';
 import { createFamilyTray } from './familyTray';
+import { paramLabel } from './labels';
+import { SweepSection } from './SweepSection';
 
-const GREEK: Record<string, string> = { sigma: 'σ', beta: 'β', rho: 'ρ', alpha: 'α' };
 const CUSTOM = -1;
 
 /**
@@ -56,6 +57,7 @@ export class Panel {
   private basinOnly: BladeApi[] = [];
   private basinsShown?: boolean;
   private readonly tray: ReturnType<typeof createFamilyTray>;
+  private readonly sweep: SweepSection;
 
   /** Proxies Tweakpane binds to; copied from / written to the app. */
   private readonly params: Record<string, number> = {};
@@ -102,7 +104,8 @@ export class Panel {
     for (const [key, action] of shortcuts) list.append(el('dt', undefined, key), el('dd', undefined, action));
     help.append(list);
 
-    body.append(this.picker, this.equations, this.meter, this.status, this.paramHost, this.mainHost, photos, help);
+    this.sweep = new SweepSection(app);
+    body.append(this.picker, this.equations, this.meter, this.status, this.paramHost, this.sweep.root, this.mainHost, photos, help);
     this.meter.title =
       'Largest Lyapunov exponent λ: how fast two almost identical starting states drift apart. ' +
       'Positive = chaotic, about zero = periodic, negative = settles to a fixed point.';
@@ -162,7 +165,7 @@ export class Panel {
       this.params[spec.name] = this.app.sys.params[i]!;
       folder
         .addBinding(this.params, spec.name, {
-          label: GREEK[spec.name] ?? spec.name,
+          label: paramLabel(spec.name),
           min: spec.min,
           max: spec.max,
           step: 10 ** -d,
@@ -334,6 +337,7 @@ export class Panel {
 
     this.title.textContent = a.name;
     this.tray.refresh();
+    this.sweep.refresh();
     const an = app.sys.analysis;
     this.status.textContent = !an.ok
       ? 'These parameters diverge: particles fly off to infinity and keep respawning.'

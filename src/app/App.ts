@@ -117,6 +117,7 @@ export class App {
     this.switching = true;
     this.presetToken = null;
     this.followUpToken = null;
+    this.sweep = null;
     clearTimeout(this.reanalyzeTimer);
     await this.tweens.run(250, (k) => (this.view.fade = 1 - k));
     if (this.countBeforeBasins !== undefined) {
@@ -156,8 +157,45 @@ export class App {
     this.switching = false;
   }
 
+  /** Running parameter sweep, if any (see startSweep). */
+  sweep: { param: number; from: number; to: number; seconds: number; phase: number } | null = null;
+
+  /**
+   * Animate one parameter back and forth between `from` and `to`, one full
+   * pass every `seconds`, so period doublings and the onset of chaos play out
+   * live. Anything else that sets parameters stops it.
+   */
+  startSweep(param: number, from: number, to: number, seconds = 20) {
+    this.presetToken = null;
+    clearTimeout(this.reanalyzeTimer);
+    // Start at the current value's position so the sweep doesn't jump.
+    const cur = this.sys.params[param]!;
+    const t = to === from ? 0 : Math.min(1, Math.max(0, (cur - from) / (to - from)));
+    this.sweep = { param, from, to, seconds, phase: t };
+    this.emit();
+  }
+
+  stopSweep() {
+    if (!this.sweep) return;
+    this.sweep = null;
+    this.scheduleReanalyze(0);
+    this.emit();
+  }
+
+  private advanceSweep(realDt: number) {
+    const sw = this.sweep;
+    if (!sw) return;
+    sw.phase = (sw.phase + realDt / sw.seconds) % 2;
+    const tri = sw.phase <= 1 ? sw.phase : 2 - sw.phase; // 0 → 1 → 0
+    const p = [...this.sys.params];
+    p[sw.param] = sw.from + (sw.to - sw.from) * tri;
+    this.sys.setParams(p, false);
+    this.emit();
+  }
+
   /** Live single-parameter change (slider drag). */
   setParam(i: number, value: number) {
+    this.sweep = null;
     this.presetToken = null;
     const p = [...this.sys.params];
     p[i] = value;
@@ -167,6 +205,7 @@ export class App {
 
   /** Tween all parameters to a preset, so the attractor morphs instead of jumping. */
   async applyPreset(values: readonly number[], ms = 1200) {
+    this.sweep = null;
     const token = {};
     this.presetToken = token;
     clearTimeout(this.reanalyzeTimer);
@@ -388,7 +427,10 @@ export class App {
       // Clamp so a backgrounded tab doesn't come back and simulate a huge jump.
       const realDt = Math.min(elapsed, 1 / 20);
       this.tweens.tick(now);
-      if (!this.paused) this.sys.advance(realDt * this.attractor.simSpeed * this.speed);
+      if (!this.paused) {
+        this.advanceSweep(realDt);
+        this.sys.advance(realDt * this.attractor.simSpeed * this.speed);
+      }
       // Measures parameters, not particles, so it keeps converging while paused.
       this.chaos.tick();
       this.view.sync(realDt);

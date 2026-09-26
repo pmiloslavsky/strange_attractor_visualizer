@@ -18,6 +18,8 @@ export const lorenz = defineAttractor({
   particleSize: 0.33,
   seedRange: [-1, 1],
   simSpeed: 0.5,
+  // ρ: fixed points below ≈ 24.7, then chaos with periodic windows.
+  sweep: { param: 2, from: 10, to: 100 },
   derivative(x, y, z, [sigma, beta, rho], out) {
     out[0] = sigma * (y - x);
     out[1] = x * (rho - z) - y;
