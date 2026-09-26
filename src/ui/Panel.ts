@@ -3,6 +3,7 @@ import { ATTRACTORS, CONTROL_RANGES, type Attractor } from '../attractors';
 import { LIMITS, type App, type IntegratorName } from '../app/App';
 import { PALETTE_NAMES, type PaletteName } from '../scene/palettes';
 import { COLOR_MODES, type ColorMode } from '../scene/shaders';
+import { DEFAULT_FAMILY } from '../scene/FamilyView';
 import { createFamilyTray } from './familyTray';
 import { paramLabel } from './labels';
 import { PoincarePanel } from './PoincarePanel';
@@ -78,6 +79,7 @@ export class Panel {
     trailOpacity: 0,
     autoRotate: true,
     autoFrame: true,
+    ride: -1,
   };
 
   constructor(
@@ -265,7 +267,7 @@ export class Panel {
     glow.addBinding(app.stage.bloom, 'radius', { min: 0, max: 1, step: 0.01 });
     glow.addBinding(app.stage.bloom, 'threshold', { min: 0, max: 1, step: 0.01 });
 
-    const cam = pane.addFolder({ title: 'Camera', expanded: false });
+    const cam = pane.addFolder({ title: 'Camera' });
     cam
       .addBinding(state, 'autoRotate', { label: 'auto-rotate' })
       .on('change', guard((v: boolean) => app.setAutoRotate(v)));
@@ -274,6 +276,14 @@ export class Panel {
       .addBinding(state, 'autoFrame', { label: 'auto-frame' })
       .on('change', guard((v: boolean) => (app.autoFrame = v)));
     cam.addButton({ title: 'Frame attractor' }).on('click', () => void app.frameCamera(800));
+    // Chase camera behind one of the photo-ball particles.
+    const rideOptions: Record<string, number> = { off: -1 };
+    DEFAULT_FAMILY.forEach((m, i) => (rideOptions[m.name] = i));
+    this.flowOnly.push(
+      cam
+        .addBinding(state, 'ride', { label: 'ride with', options: rideOptions })
+        .on('change', guard((v: number) => (v < 0 ? app.stopRide() : app.startRide(v)))),
+    );
 
     const capture = pane.addFolder({ title: 'Capture', expanded: false });
     capture.addButton({ title: 'Save screenshot (PNG)' }).on('click', () => void app.saveScreenshot());
@@ -334,6 +344,7 @@ export class Panel {
       trailOpacity: app.view.style.trailOpacity,
       autoRotate: app.stage.controls.autoRotate,
       autoFrame: app.autoFrame,
+      ride: app.ride ?? -1,
     });
 
     this.syncing = true;

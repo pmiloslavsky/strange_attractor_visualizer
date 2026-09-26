@@ -69,7 +69,8 @@ export class FamilyView {
     mat.needsUpdate = true;
   }
 
-  sync(fade: number, camera: THREE.Camera, projScale: number) {
+  /** `ridden`: index of the ball the camera is riding behind; drawn small so it doesn't fill the view. */
+  sync(fade: number, camera: THREE.Camera, projScale: number, ridden: number | null = null) {
     const { sys } = this;
     const worldSize = sys.analysis.radius * RELATIVE_SIZE;
     this.group.updateMatrixWorld();
@@ -81,7 +82,7 @@ export class FamilyView {
       if (!sprite.visible) return;
       sprite.position.fromArray(sys.pos, 3 * i);
       const dist = this.tmp.copy(sprite.position).applyMatrix4(this.group.matrixWorld).distanceTo(camera.position);
-      sprite.scale.setScalar(Math.max(worldSize, (MIN_PIXELS * dist) / projScale));
+      sprite.scale.setScalar(i === ridden ? worldSize * 0.3 : Math.max(worldSize, (MIN_PIXELS * dist) / projScale));
       sprite.material.opacity = fade;
     });
   }

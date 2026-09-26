@@ -104,6 +104,8 @@ export class App {
     void this.frameCamera(0);
     // The user taking the camera cancels any automatic follow-up move.
     this.stage.controls.addEventListener('start', () => (this.followUpToken = null));
+    // Controls are disabled while riding, so listen on the canvas: a drag ends the ride.
+    this.stage.renderer.domElement.addEventListener('pointerdown', () => this.stopRide());
   }
 
   get attractor(): Attractor {
@@ -128,6 +130,7 @@ export class App {
     this.presetToken = null;
     this.followUpToken = null;
     this.sweep = null;
+    this.stopRide(false); // the switch frames the camera itself
     clearTimeout(this.reanalyzeTimer);
     await this.tweens.run(250, (k) => (this.view.fade = 1 - k));
     if (this.countBeforeBasins !== undefined) {
@@ -312,6 +315,65 @@ export class App {
     if (ratio < 0.7 || ratio > 1.4 || moved) void this.frameCamera(800);
   }
 
+  // --- Ride along --------------------------------------------------------------
+
+  /** Index of the particle (0–2, the photo balls) the camera is riding with, or null. */
+  ride: number | null = null;
+  private rideLook = new THREE.Vector3();
+  private rideAutoRotate = false;
+
+  /** Chase-camera ride on particle `i` (flows only). Dragging the view, Esc or stopRide() ends it. */
+  startRide(i: number) {
+    if (this.attractor.kind !== 'flow' || i >= this.sys.count) return;
+    if (this.ride === null) this.rideAutoRotate = this.stage.controls.autoRotate;
+    this.ride = i;
+    this.followUpToken = null;
+    const { controls, camera } = this.stage;
+    controls.enabled = false;
+    controls.autoRotate = false;
+    this.rideLook.copy(controls.target);
+    camera.near = this.sys.analysis.radius / 5000; // we'll be right among the particles
+    camera.updateProjectionMatrix();
+    this.emit();
+  }
+
+  /** `reframe`: glide back to the overview (skip when something else is about to move the camera). */
+  stopRide(reframe = true) {
+    if (this.ride === null) return;
+    this.ride = null;
+    const { controls } = this.stage;
+    controls.enabled = true;
+    controls.autoRotate = this.rideAutoRotate;
+    if (reframe) void this.frameCamera(900);
+    this.emit();
+  }
+
+  /**
+   * Place the camera a little behind and above the ridden particle, looking
+   * ahead along its direction of travel (from the equations, not the noisy
+   * frame-to-frame motion), easing toward that pose so turns are smooth.
+   */
+  private updateRide(realDt: number) {
+    if (this.ride === null) return;
+    const i = this.ride;
+    if (i >= this.sys.count || this.attractor.kind !== 'flow') return this.stopRide();
+    const { pos, params, attractor } = this.sys;
+    const r = this.sys.analysis.radius;
+    const d: [number, number, number] = [0, 0, 0];
+    attractor.derivative(pos[3 * i]!, pos[3 * i + 1]!, pos[3 * i + 2]!, params, d);
+    const p = this.view.modelToWorld([pos[3 * i]!, pos[3 * i + 1]!, pos[3 * i + 2]!]);
+    const dir = new THREE.Vector3(...d).applyQuaternion(this.view.group.quaternion);
+    if (dir.lengthSq() < 1e-20) return;
+    dir.normalize();
+    const eye = p.clone().addScaledVector(dir, -0.14 * r).add(new THREE.Vector3(0, 0.05 * r, 0));
+    const look = p.clone().addScaledVector(dir, 0.12 * r);
+    const k = 1 - Math.exp(-realDt * 5);
+    this.stage.camera.position.lerp(eye, k);
+    this.rideLook.lerp(look, k);
+    // OrbitControls still runs update() and looks at its target; keep it on our look point.
+    this.stage.controls.target.copy(this.rideLook);
+  }
+
   // --- Poincaré section --------------------------------------------------------
 
   /** Whether the UI asked for the section (it stays off on maps regardless). */
@@ -485,7 +547,8 @@ export class App {
       this.collectSection(); // before view.sync, which consumes sys.lastWrite
       this.view.sync(realDt);
       this.sectionView.sync(this.sys.analysis);
-      this.family.sync(this.view.fade, this.stage.camera, this.view.projScale);
+      this.updateRide(realDt);
+      this.family.sync(this.view.fade, this.stage.camera, this.view.projScale, this.ride);
       this.stage.render();
     });
   }
