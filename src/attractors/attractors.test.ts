@@ -3,7 +3,7 @@ import { euler } from '../simulation/integrators';
 import { ATTRACTORS, eulerStep, getAttractor } from './index';
 
 describe('attractor registry', () => {
-  it('has the original 7 flows in order, then the maps, with unique ids', () => {
+  it('has the original 7 flows in order, then added flows, then the maps, with unique ids', () => {
     expect(ATTRACTORS.map((a) => a.name)).toEqual([
       'Lorenz',
       'Chen-Lee',
@@ -12,10 +12,12 @@ describe('attractor registry', () => {
       'Three-Scroll-Unified',
       'Thomas',
       'Dadras',
+      'Chua',
+      'Newton–Leipnik',
       'Clifford',
       'Peter de Jong',
     ]);
-    expect(ATTRACTORS.map((a) => a.kind)).toEqual([...Array(7).fill('flow'), 'map', 'map']);
+    expect(ATTRACTORS.map((a) => a.kind)).toEqual([...Array(9).fill('flow'), 'map', 'map']);
     expect(new Set(ATTRACTORS.map((a) => a.id)).size).toBe(ATTRACTORS.length);
   });
 

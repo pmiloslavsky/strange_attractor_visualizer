@@ -1,5 +1,5 @@
 import type { Attractor } from '../attractors';
-import { analyze, type Analysis } from './analysis';
+import { analyze, nearest2, type Analysis } from './analysis';
 import { euler, type Integrator } from './integrators';
 
 /** Upper bound on derivative evaluations per frame, so a tiny dt can't stall the tab. */
@@ -7,6 +7,17 @@ const MAX_EVALS_PER_FRAME = 3_000_000;
 /** A particle further than this many attractor radii from the center has escaped. */
 const ESCAPE_RADII = 50;
 const STATS_SAMPLE = 256;
+/** Butterfly-demo cluster size, as a fraction of the attractor radius. */
+const CLUSTER_SIZE = 1e-3;
+
+/**
+ * How reseed() places particles:
+ * - 'attractor': scattered over the attractor (the default).
+ * - 'cluster': all within a tiny ball at one point (butterfly-effect demo).
+ * - 'region': spread over the system's basin region, each labeled with the
+ *   attractor it will reach (systems with several attractors only).
+ */
+export type SeedMode = 'attractor' | 'cluster' | 'region';
 
 /**
  * CPU-side particle + trail state. Framework-free: the Three.js view reads
@@ -35,6 +46,13 @@ export class ParticleSystem {
   trail = new Float32Array(0);
   /** Speed at each trail vertex (for coloring). */
   speed = new Float32Array(0);
+  /**
+   * Which attractor each particle is on or headed for (index into
+   * attractor.basins.seeds), or −1 when unknown or not applicable.
+   */
+  label = new Int8Array(0);
+  /** `label` copied to every trail vertex, for "attractor" coloring. */
+  basin = new Float32Array(0);
   /** Line-segment indices, segment-major. */
   index = new Uint32Array(0);
   /** Most recently written slot. */
@@ -68,6 +86,11 @@ export class ParticleSystem {
     this.configure(count, trailLength);
   }
 
+  /** Integrator actually used: maps are an Euler step with dt = 1 by definition (see defineMap). */
+  private get integrate(): Integrator {
+    return this.attractor.kind === 'map' ? euler : this.integrator;
+  }
+
   /** Switch system: default parameters and dt, fresh particles on the new attractor. */
   setAttractor(a: Attractor, params: readonly number[] = a.examples[0]!) {
     this.attractor = a;
@@ -89,27 +112,40 @@ export class ParticleSystem {
 
   /**
    * Resize the particle and trail buffers. Existing particles keep their
-   * positions (only their trails restart), so changing the count or trail
-   * length doesn't visibly reset the simulation.
+   * positions and labels (only their trails restart), so changing the count or
+   * trail length doesn't visibly reset the simulation.
    */
   configure(count: number, trailLength: number) {
     const oldPos = this.pos;
-    const oldCount = this.count;
+    const oldLabel = this.label;
+    const keep = Math.min(this.count, Math.max(1, Math.floor(count)));
     this.count = Math.max(1, Math.floor(count));
     this.trailLength = Math.max(2, Math.floor(trailLength));
     const verts = this.count * this.trailLength;
     this.pos = new Float32Array(this.count * 3);
     this.trail = new Float32Array(verts * 3);
     this.speed = new Float32Array(verts);
+    this.basin = new Float32Array(verts);
+    this.label = new Int8Array(this.count);
     this.index = new Uint32Array(verts * 2);
     this.version++;
-    this.reseed(Math.min(oldCount, this.count), oldPos);
+    for (let i = 0; i < this.count; i++) {
+      if (i < keep) this.placeAt(i, oldPos[3 * i]!, oldPos[3 * i + 1]!, oldPos[3 * i + 2]!, oldLabel[i]!);
+      else this.spawn(i);
+    }
+    this.resetRing();
   }
 
   reanalyze() {
     this.analysis = analyze(this.attractor, this.params, this.dt);
     this.speedRange = [...this.analysis.speedRange];
     this.zRange = [...this.analysis.zRange];
+    this.relabel();
+  }
+
+  /** Whether 'region' seeding (and attractor coloring) applies right now. */
+  get hasBasins(): boolean {
+    return !!this.analysis.basins && !!this.attractor.basins;
   }
 
   /**
@@ -131,19 +167,29 @@ export class ParticleSystem {
     if (any) this.fullDirty = true;
   }
 
-  /** Place particles on the attractor; the first `keep` take their positions from `from` instead. */
-  reseed(keep = 0, from?: Float32Array) {
-    for (let i = 0; i < this.count; i++) {
-      if (i < keep && from) this.placeAt(i, from[3 * i]!, from[3 * i + 1]!, from[3 * i + 2]!);
-      else this.spawn(i);
+  /** Place every particle afresh (see SeedMode) and restart all trails. */
+  reseed(mode: SeedMode = 'attractor') {
+    if (mode === 'region' && !this.hasBasins) mode = 'attractor';
+    if (mode === 'cluster') {
+      const { samples, radius } = this.analysis;
+      const j = 3 * Math.floor(Math.random() * (samples.length / 3));
+      const label = this.analysis.basins?.sampleBasin[j / 3] ?? -1;
+      const r = () => (Math.random() - 0.5) * radius * CLUSTER_SIZE;
+      for (let i = 0; i < this.count; i++) {
+        this.placeAt(i, samples[j]! + r(), samples[j + 1]! + r(), samples[j + 2]! + r(), label);
+      }
+    } else if (mode === 'region') {
+      const { min, max } = this.attractor.basins!.region;
+      for (let i = 0; i < this.count; i++) {
+        const x = min[0] + Math.random() * (max[0] - min[0]);
+        const y = min[1] + Math.random() * (max[1] - min[1]);
+        const z = min[2] + Math.random() * (max[2] - min[2]);
+        this.placeAt(i, x, y, z, this.destination(x, y, z));
+      }
+    } else {
+      for (let i = 0; i < this.count; i++) this.spawn(i);
     }
-    this.head = 0;
-    this.accumulator = 0;
-    for (let k = 0; k < this.trailLength; k++) this.setSegment(k, k === 0);
-    this.speedRange = [...this.analysis.speedRange];
-    this.zRange = [...this.analysis.zRange];
-    this.fullDirty = true;
-    this.lastWrite = null;
+    this.resetRing();
   }
 
   /** Advance by `simTime` units of model time and record one trail slot. */
@@ -155,9 +201,7 @@ export class ParticleSystem {
     steps = Math.min(steps, Math.max(1, Math.floor(MAX_EVALS_PER_FRAME / count)));
     if (steps <= 0) return;
 
-    // Maps are defined as an Euler step with dt = 1 (see defineMap); any other
-    // integrator would produce points that aren't iterates of the map.
-    const integrate = this.attractor.kind === 'map' ? euler : this.integrator;
+    const integrate = this.integrate;
     for (let s = 0; s < steps; s++) integrate(this.attractor.derivative, pos, count, this.params, dt);
 
     const prevSlot = this.head;
@@ -179,6 +223,7 @@ export class ParticleSystem {
       const v = 3 * (base + i), pv = 3 * (prevBase + i);
       this.speed[base + i] =
         Math.hypot(x - this.trail[pv]!, y - this.trail[pv + 1]!, z - this.trail[pv + 2]!) / elapsed;
+      this.basin[base + i] = this.label[i]!;
       this.trail[v] = x;
       this.trail[v + 1] = y;
       this.trail[v + 2] = z;
@@ -191,28 +236,94 @@ export class ParticleSystem {
     this.updateStats(base);
   }
 
+  /**
+   * Which attractor a start point leads to, found by running a copy of it
+   * forward with the same integrator, dt and float32 storage as the live
+   * particles, so the answer matches where the particle really goes. The copy
+   * is checked every CHECK steps against each attractor's probe points and is
+   * labeled once the same attractor is nearest, and close, several checks in
+   * a row. Returns −1 if it hasn't settled within the step budget.
+   */
+  private destination(x: number, y: number, z: number): number {
+    const basins = this.analysis.basins;
+    if (!basins) return -1;
+    const CHECK = 250, MAX_STEPS = 40_000, AGREE = 3;
+    const near2 = (0.1 * this.analysis.radius) ** 2;
+    const p = new Float32Array([x, y, z]);
+    const integrate = this.integrate;
+    let candidate = -1, streak = 0;
+    for (let s = 1; s <= MAX_STEPS; s++) {
+      integrate(this.attractor.derivative, p, 1, this.params, this.dt);
+      if (s % CHECK) continue;
+      if (!(Math.abs(p[0]!) + Math.abs(p[1]!) + Math.abs(p[2]!) < 1e6)) return -1;
+      const k = this.nearestBasin(p[0]!, p[1]!, p[2]!, near2);
+      streak = k >= 0 && k === candidate ? streak + 1 : k >= 0 ? 1 : 0;
+      candidate = k;
+      if (streak >= AGREE) return k;
+    }
+    return -1;
+  }
+
+  /** Index of the attractor whose probe points are nearest, if within `max2`; else −1. */
+  private nearestBasin(x: number, y: number, z: number, max2 = Infinity): number {
+    const probes = this.analysis.basins?.probes;
+    if (!probes) return -1;
+    let best = -1, bestD = max2;
+    probes.forEach((pts, k) => {
+      const d = nearest2(pts, x, y, z);
+      if (d < bestD) {
+        bestD = d;
+        best = k;
+      }
+    });
+    return best;
+  }
+
+  /** After a parameter change: label each particle by the attractor it's nearest to now. */
+  private relabel() {
+    if (this.count === 0) return;
+    for (let i = 0; i < this.count; i++) {
+      this.label[i] = this.nearestBasin(this.pos[3 * i]!, this.pos[3 * i + 1]!, this.pos[3 * i + 2]!);
+    }
+    for (let s = 0; s < this.trailLength; s++) this.basin.set(this.label, s * this.count);
+    this.fullDirty = true;
+  }
+
   /** Place particle i at a random point on the reference trajectory and reset its trail. */
   private spawn(i: number) {
-    const { samples, radius } = this.analysis;
+    const { samples, radius, basins } = this.analysis;
     const n = samples.length / 3;
-    const j = 3 * Math.floor(Math.random() * n);
+    const k = Math.floor(Math.random() * n);
     const jitter = radius * 0.004;
     const r = () => (Math.random() - 0.5) * jitter;
-    this.placeAt(i, samples[j]! + r(), samples[j + 1]! + r(), samples[j + 2]! + r());
+    this.placeAt(i, samples[3 * k]! + r(), samples[3 * k + 1]! + r(), samples[3 * k + 2]! + r(), basins?.sampleBasin[k] ?? -1);
   }
 
   /** Put particle i at a point and collapse its whole trail onto it. */
-  private placeAt(i: number, x: number, y: number, z: number) {
+  private placeAt(i: number, x: number, y: number, z: number, label: number) {
     this.pos[3 * i] = x;
     this.pos[3 * i + 1] = y;
     this.pos[3 * i + 2] = z;
+    this.label[i] = label;
     for (let s = 0; s < this.trailLength; s++) {
       const v = s * this.count + i;
       this.trail[3 * v] = this.pos[3 * i]!;
       this.trail[3 * v + 1] = this.pos[3 * i + 1]!;
       this.trail[3 * v + 2] = this.pos[3 * i + 2]!;
       this.speed[v] = this.analysis.speedRange[0];
+      this.basin[v] = label;
     }
+  }
+
+  /** Restart the ring buffer after particles were (re)placed. */
+  private resetRing() {
+    this.head = 0;
+    this.accumulator = 0;
+    for (let k = 0; k < this.trailLength; k++) this.setSegment(k, k === 0);
+    this.speedRange = [...this.analysis.speedRange];
+    this.zRange = [...this.analysis.zRange];
+    this.fullDirty = true;
+    this.lastWrite = null;
   }
 
   private setSegment(k: number, broken: boolean) {

@@ -58,6 +58,15 @@ export interface AttractorDef<P extends readonly ParamSpec[] = readonly ParamSpe
    */
   readonly simSpeed: number;
   readonly derivative: Derivative<P>;
+  /**
+   * For systems with several coexisting attractors at the default parameters:
+   * one starting point known to reach each, and a region of starting points to
+   * seed from when showing which attractor each start leads to.
+   */
+  readonly basins?: {
+    readonly seeds: readonly Vec3[];
+    readonly region: { readonly min: Vec3; readonly max: Vec3 };
+  };
 }
 
 /** Type-erased form used by the registry and the rest of the app. */

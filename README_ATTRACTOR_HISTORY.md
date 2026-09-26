@@ -1,6 +1,6 @@
 # The Attractors: History and Background
 
-The first seven systems in the visualizer are each a set of three coupled
+The first nine systems in the visualizer are each a set of three coupled
 ordinary differential equations (the last two are 2D iterated maps, covered
 [at the end](#2d-maps-clifford-and-peter-de-jong)). Start almost anywhere and a trajectory settles onto a bounded shape,
 the *attractor*, but never repeats itself and never settles into a loop. Two
@@ -9,10 +9,12 @@ This combination of boundedness, aperiodicity and sensitive dependence is what
 makes an attractor *strange*, and it is why a cloud of particles, each started
 a hair apart, spreads out to trace the whole shape.
 
-The parameter values below are the ones the visualizer uses. They come from the
-original C++ [ode_simulation](https://github.com/pmiloslavsky/demo/tree/master/ode_simulation)
+The parameter values below are the ones the visualizer uses. For the first
+seven they come from the original C++
+[ode_simulation](https://github.com/pmiloslavsky/demo/tree/master/ode_simulation)
 parameter table, which matches the values popularized by
 [Dynamic Mathematics' strange attractor gallery](https://www.dynamicmath.xyz/strange-attractors/).
+Sources for the systems added later are given in their sections.
 Notation follows the code: `dx/dt` etc., with parameters named as in the sliders.
 
 | | System | Year | Origin |
@@ -24,8 +26,10 @@ Notation follows the code: `dx/dt` etc., with parameters named as in the sliders
 | 5 | [Three-Scroll Unified](#three-scroll-unified-chaotic-system) | 2010 | Unifying Lorenz- and Lü/Chen-type systems |
 | 6 | [Thomas](#thomas) | 1999 | Biological feedback circuits |
 | 7 | [Dadras](#dadras) | 2009 | Multi-scroll attractor design |
-| 8 | [Clifford](#clifford) | | Computer art (2D map) |
-| 9 | [Peter de Jong](#peter-de-jong) | 1987 | Computer art (2D map) |
+| 8 | [Chua's circuit](#chuas-circuit) | 1983 | A real electronic circuit |
+| 9 | [Newton–Leipnik](#newtonleipnik) | 1981 | Rigid-body motion; two attractors at once |
+| 10 | [Clifford](#clifford) | | Computer art (2D map) |
+| 11 | [Peter de Jong](#peter-de-jong) | 1987 | Computer art (2D map) |
 
 ---
 
@@ -244,6 +248,83 @@ visualizer to see the scroll count change.
 
 - [Dadras, S., Momeni, H. R. (2009). A novel three-dimensional autonomous chaotic system generating two, three and four-scroll attractors. *Physics Letters A* 373(40): 3637–3642](https://www.sciencedirect.com/science/article/abs/pii/S0375960109009591)
 - [NASA ADS abstract](https://ui.adsabs.harvard.edu/abs/2009PhLA..373.3637D/abstract)
+
+---
+
+## Chua's circuit
+
+<img src="docs/screenshots/chua.jpg" width="480" alt="Chua's circuit double scroll attractor">
+
+```
+dx/dt = α(y − x − f(x))
+dy/dt = x − y + z
+dz/dt = −βy
+f(x)  = m1·x + ½(m0 − m1)(|x + 1| − |x − 1|)
+```
+
+Defaults: α = 15.6, β = 28, m0 = −1.143, m1 = −0.714 (the "double scroll").
+Also: α = 9, β = 14.286 (the other standard double-scroll set), and
+α = 8.5, β = 14.286, which gives a *single* scroll that stays on one side.
+
+Every other flow here is an abstract model. **Chua's circuit** is a real
+electronic circuit you can build on a breadboard. **Leon Chua** designed it in
+1983 as the simplest circuit that could be shown to be chaotic: two
+capacitors, an inductor, a resistor, and one nonlinear element, "Chua's diode".
+The variables are the two capacitor voltages and the inductor current.
+
+The diode is what makes it interesting to look at. Its current–voltage curve
+is *piecewise linear*: three straight segments with slope m0 in the middle
+and m1 outside, joined at |x| = 1. Within each region the equations are
+linear, and a linear system on its own can only spiral in or out. The chaos
+comes entirely from switching between regions. A trajectory spirals outward
+around one of the two outer equilibria, crosses the threshold, and gets thrown
+across to spiral around the other one. That produces the two scrolls, joined
+by a band through the middle. The double scroll was observed in the real
+circuit, not only in simulation.
+
+- [Chua's circuit (Wikipedia)](https://en.wikipedia.org/wiki/Chua%27s_circuit)
+- [Chua circuit reference MATLAB model and parameters (chuacircuits.com)](https://www.chuacircuits.com/matlabsim.php)
+
+---
+
+## Newton–Leipnik
+
+<img src="docs/screenshots/newton-leipnik.jpg" width="480" alt="The two Newton-Leipnik attractors, colored blue and yellow">
+
+```
+dx/dt = −ax + y + 10yz
+dy/dt = −x − 0.4y + 5xz
+dz/dt = bz − 5xy
+```
+
+Defaults: a = 0.4, b = 0.175.
+
+In 1981 **R. B. Leipnik and T. A. Newton** took Euler's equations for a
+rotating rigid body, the same starting point Chen and Lee used later, added
+linear feedback, and found something unusual: for these feedback gains there
+are **two separate strange attractors at the same time**. Which one a
+trajectory ends up on depends only on where it starts. The set of starting
+points that lead to a given attractor is its *basin of attraction*.
+
+The visualizer shows this directly. Selecting Newton–Leipnik seeds particles
+on the flat slice z = 0, colors each by the attractor it will reach (found by
+running a copy of that particle forward first), and looks straight down at the
+slice. The two basins form a bowtie:
+
+<img src="docs/screenshots/newton-leipnik-basins.jpg" width="480" alt="Basin slice: a bowtie of yellow points on a blue field">
+
+Then the particles lift off and assemble into an upper attractor (blue) and a
+lower one (yellow), and the camera follows them in.
+
+A practical footnote from building this: the integration step matters a lot
+here. With the simple Euler method at dt = 0.01, the numerical error is big
+enough to merge the two attractors into one distorted shape. At dt = 0.002
+(the default here) they are distinct, matching a much more accurate
+integrator. Try raising dt in the panel: once the attractors merge, the panel
+drops the "attractor" color mode, because there is only one attractor left.
+
+- [Leipnik, R. B., Newton, T. A. (1981). Double strange attractors in rigid body motion with linear feedback control. *Physics Letters A* 86(2): 63–67](https://www.sciencedirect.com/science/article/abs/pii/0375960181901651)
+- [Basin of attraction (Wikipedia, "Attractor")](https://en.wikipedia.org/wiki/Attractor#Basins_of_attraction)
 
 ---
 

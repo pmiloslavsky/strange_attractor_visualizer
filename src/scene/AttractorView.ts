@@ -47,6 +47,7 @@ export class AttractorView {
   private heads?: THREE.Points;
   private posAttr?: THREE.BufferAttribute;
   private speedAttr?: THREE.BufferAttribute;
+  private basinAttr?: THREE.BufferAttribute;
   private indexAttr?: THREE.BufferAttribute;
   private builtVersion = -1;
   private readonly trailMaterial: THREE.ShaderMaterial;
@@ -103,23 +104,24 @@ export class AttractorView {
   sync(realDt: number) {
     const sys = this.sys;
     if (sys.version !== this.builtVersion) this.build();
-    const pos = this.posAttr!, speed = this.speedAttr!, index = this.indexAttr!;
+    const pos = this.posAttr!, speed = this.speedAttr!, basin = this.basinAttr!, index = this.indexAttr!;
     const n = sys.count;
 
     if (sys.fullDirty) {
-      pos.clearUpdateRanges();
-      speed.clearUpdateRanges();
-      index.clearUpdateRanges();
-      pos.needsUpdate = speed.needsUpdate = index.needsUpdate = true;
+      for (const attr of [pos, speed, basin, index]) {
+        attr.clearUpdateRanges();
+        attr.needsUpdate = true;
+      }
       sys.fullDirty = false;
       sys.lastWrite = null;
     } else if (sys.lastWrite) {
       const { slot, prevSlot } = sys.lastWrite;
       pos.addUpdateRange(slot * n * 3, n * 3);
       speed.addUpdateRange(slot * n, n);
+      basin.addUpdateRange(slot * n, n);
       index.addUpdateRange(prevSlot * n * 2, n * 2);
       index.addUpdateRange(slot * n * 2, n * 2);
-      pos.needsUpdate = speed.needsUpdate = index.needsUpdate = true;
+      pos.needsUpdate = speed.needsUpdate = basin.needsUpdate = index.needsUpdate = true;
       sys.lastWrite = null;
     }
 
@@ -155,17 +157,20 @@ export class AttractorView {
 
     this.posAttr = new THREE.BufferAttribute(sys.trail, 3).setUsage(THREE.DynamicDrawUsage);
     this.speedAttr = new THREE.BufferAttribute(sys.speed, 1).setUsage(THREE.DynamicDrawUsage);
+    this.basinAttr = new THREE.BufferAttribute(sys.basin, 1).setUsage(THREE.DynamicDrawUsage);
     this.indexAttr = new THREE.BufferAttribute(sys.index, 1).setUsage(THREE.DynamicDrawUsage);
 
     const trailGeom = new THREE.BufferGeometry();
     trailGeom.setAttribute('position', this.posAttr);
     trailGeom.setAttribute('speed', this.speedAttr);
+    trailGeom.setAttribute('basin', this.basinAttr);
     trailGeom.setIndex(this.indexAttr);
 
     // Heads share the trail's attributes; a draw range selects the newest slot.
     const headGeom = new THREE.BufferGeometry();
     headGeom.setAttribute('position', this.posAttr);
     headGeom.setAttribute('speed', this.speedAttr);
+    headGeom.setAttribute('basin', this.basinAttr);
 
     this.trails = new THREE.LineSegments(trailGeom, this.trailMaterial);
     this.heads = new THREE.Points(headGeom, this.headMaterial);
@@ -180,9 +185,14 @@ export class AttractorView {
     sys.lastWrite = null;
   }
 
-  /** World-space center of the current attractor (model center through the group transform). */
-  worldCenter(target = new THREE.Vector3()): THREE.Vector3 {
+  /** A model-space point (ODE coordinates) in world space. */
+  modelToWorld(p: readonly number[], target = new THREE.Vector3()): THREE.Vector3 {
     this.group.updateMatrixWorld();
-    return target.fromArray(this.sys.analysis.center).applyMatrix4(this.group.matrixWorld);
+    return target.fromArray(p).applyMatrix4(this.group.matrixWorld);
+  }
+
+  /** World-space center of the current attractor. */
+  worldCenter(target = new THREE.Vector3()): THREE.Vector3 {
+    return this.modelToWorld(this.sys.analysis.center, target);
   }
 }

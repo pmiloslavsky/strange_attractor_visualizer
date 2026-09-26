@@ -7,7 +7,8 @@
  * old that slot is relative to the ring-buffer head.
  */
 
-export const COLOR_MODES = ['speed', 'age', 'height', 'particle'] as const;
+/** 'attractor' only applies to systems with several attractors (see ParticleSystem.label). */
+export const COLOR_MODES = ['speed', 'age', 'height', 'particle', 'attractor'] as const;
 export type ColorMode = (typeof COLOR_MODES)[number];
 
 const common = /* glsl */ `
@@ -22,6 +23,7 @@ const common = /* glsl */ `
   uniform float uCycle;
 
   attribute float speed;
+  attribute float basin;
 
   // Integer math: float division can land a hair below an exact multiple on
   // some GPUs and misattribute a vertex to the previous slot.
@@ -40,8 +42,13 @@ const common = /* glsl */ `
       t = 1.0 - age / uTrailLength;
     } else if (uColorMode == 2) {
       t = (dot(position, uHeightAxis) - uZRange.x) / (uZRange.y - uZRange.x);
-    } else {
+    } else if (uColorMode == 3) {
       t = fract(float(vertexParticle()) * 0.61803398875);
+    } else {
+      // Which attractor: the two ends of the palette (no cycling, so the two
+      // stay distinct). Unknown (still settling) is a dim neutral.
+      if (basin < -0.5) return vec3(0.25);
+      return texture2D(uPalette, vec2(basin < 0.5 ? 0.3 : 0.92, 0.5)).rgb;
     }
     return texture2D(uPalette, vec2(clamp(t, 0.0, 1.0) + uCycle, 0.5)).rgb;
   }

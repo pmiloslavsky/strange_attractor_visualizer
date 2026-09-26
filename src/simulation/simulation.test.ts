@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ATTRACTORS, getAttractor } from '../attractors';
-import { analyze } from './analysis';
+import { analyze, nearest2 } from './analysis';
 import { ParticleSystem } from './ParticleSystem';
 
 describe('analyze', () => {
@@ -15,6 +15,39 @@ describe('analyze', () => {
       }
     },
   );
+});
+
+describe('Newton–Leipnik basins', () => {
+  const nl = getAttractor('newton-leipnik');
+
+  it('finds two distinct attractors at the default dt', () => {
+    const r = analyze(nl, nl.examples[0]!, nl.dt);
+    expect(r.basins?.probes).toHaveLength(2);
+    // Upper attractor sits higher than the lower one.
+    const meanZ = (pts: Float32Array) => { let s = 0; for (let i = 2; i < pts.length; i += 3) s += pts[i]!; return s / (pts.length / 3); };
+    expect(meanZ(r.basins!.probes[0]!)).toBeGreaterThan(meanZ(r.basins!.probes[1]!) + 0.2);
+  });
+
+  it('falls back to a single attractor when a coarse dt merges them', () => {
+    expect(analyze(nl, nl.examples[0]!, 0.01).basins).toBeUndefined();
+  });
+
+  it('labels region seeds with the attractor they actually reach', () => {
+    const sys = new ParticleSystem(nl, 24, 4);
+    sys.reseed('region');
+    const labels = Array.from(sys.label);
+    expect(labels.filter((l) => l >= 0).length).toBeGreaterThan(20);
+    expect(new Set(labels.filter((l) => l >= 0)).size).toBe(2); // both basins sampled
+    // Run the real particles long enough to settle, then check they're where predicted.
+    for (let i = 0; i < 400; i++) sys.advance(0.1);
+    const probes = sys.analysis.basins!.probes;
+    labels.forEach((l, i) => {
+      if (l < 0) return;
+      const [x, y, z] = [sys.pos[3 * i]!, sys.pos[3 * i + 1]!, sys.pos[3 * i + 2]!];
+      const d = probes.map((p) => nearest2(p, x, y, z));
+      expect(d[l]).toBeLessThan(d[1 - l]!);
+    });
+  });
 });
 
 describe('ParticleSystem trail ring buffer', () => {

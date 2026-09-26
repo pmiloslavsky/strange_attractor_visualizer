@@ -1,9 +1,11 @@
 import { aizawa } from './aizawa';
 import { chenLee } from './chenLee';
+import { chua } from './chua';
 import { clifford } from './clifford';
 import { dadras } from './dadras';
 import { deJong } from './deJong';
 import { lorenz } from './lorenz';
+import { newtonLeipnik } from './newtonLeipnik';
 import { rossler } from './rossler';
 import { thomas } from './thomas';
 import { threeScroll } from './threeScroll';
@@ -12,8 +14,8 @@ import type { Attractor } from './types';
 export * from './types';
 
 /**
- * The original `vector<StrangeAttractorDE> DE` table, same order, followed by
- * the 2D maps added in this port.
+ * The original `vector<StrangeAttractorDE> DE` table, same order, then the
+ * flows added in this port, then the 2D maps.
  */
 export const ATTRACTORS: readonly Attractor[] = [
   lorenz,
@@ -23,6 +25,8 @@ export const ATTRACTORS: readonly Attractor[] = [
   threeScroll,
   thomas,
   dadras,
+  chua,
+  newtonLeipnik,
   clifford,
   deJong,
 ];

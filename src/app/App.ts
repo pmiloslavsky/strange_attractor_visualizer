@@ -5,7 +5,8 @@ import { FamilyView } from '../scene/FamilyView';
 import { Stage } from '../scene/stage';
 import { Tweens } from '../scene/tween';
 import { euler, rk4 } from '../simulation/integrators';
-import { ParticleSystem } from '../simulation/ParticleSystem';
+import { ParticleSystem, type SeedMode } from '../simulation/ParticleSystem';
+import type { ColorMode } from '../scene/shaders';
 
 export const LIMITS = {
   particles: { min: 1, max: 8000 },
@@ -31,6 +32,8 @@ const VIEW_DIR = new THREE.Vector3(1, 0.45, 1.2).normalize();
  * is up on screen (model +y), and auto-rotate then spins the image in place.
  */
 const MAP_VIEW_DIR = new THREE.Vector3(0, 1, 0.02).normalize();
+/** Minimum particle count for the basin demo, so the pattern reads clearly. */
+const BASIN_PARTICLES = 4000;
 
 /**
  * Owns the simulation, its view and the camera, and exposes the operations the
@@ -59,6 +62,13 @@ export class App {
   /** Identifies the running preset tween; replaced to cancel it. */
   private presetToken: object | null = null;
   private framed = { center: new THREE.Vector3(), radius: 1 };
+  /** Restored when leaving a multi-attractor system, which forces 'attractor' coloring. */
+  private colorModeBeforeBasins: ColorMode = 'speed';
+  /** Particle count to restore when leaving the basin demo, if it raised it. */
+  private countBeforeBasins: number | undefined;
+  /** Pending "follow the particles in" camera move after the basin demo. */
+  private followUpTimer: ReturnType<typeof setTimeout> | undefined;
+  private followUpToken: object | null = null;
   /** Last particle/trail settings used for each kind, restored when switching back. */
   private kindConfig = {
     flow: { count: DEFAULT_PARTICLES, trail: DEFAULT_TRAIL },
@@ -78,6 +88,8 @@ export class App {
     this.stage.resize();
     this.stage.camera.position.copy(VIEW_DIR);
     void this.frameCamera(0);
+    // The user taking the camera cancels any automatic follow-up move.
+    this.stage.controls.addEventListener('start', () => (this.followUpToken = null));
   }
 
   get attractor(): Attractor {
@@ -100,8 +112,14 @@ export class App {
     if (this.switching || a === this.sys.attractor) return;
     this.switching = true;
     this.presetToken = null;
+    this.followUpToken = null;
     clearTimeout(this.reanalyzeTimer);
     await this.tweens.run(250, (k) => (this.view.fade = 1 - k));
+    if (this.countBeforeBasins !== undefined) {
+      // Leaving the basin demo: undo its particle-count bump.
+      this.sys.configure(this.countBeforeBasins, this.sys.trailLength);
+      this.countBeforeBasins = undefined;
+    }
     const prevKind = this.sys.attractor.kind;
     this.kindConfig[prevKind] = { count: this.sys.count, trail: this.sys.trailLength };
     this.sys.setAttractor(a);
@@ -113,8 +131,22 @@ export class App {
       this.sys.configure(count, trail);
     }
     this.view.setStyle({ particleSize: a.particleSize });
+    let glide: Promise<void>;
+    if (this.sys.hasBasins) {
+      // Several attractors: open with the basin demo, colored by destination.
+      if (this.view.style.colorMode !== 'attractor') this.colorModeBeforeBasins = this.view.style.colorMode;
+      this.view.setStyle({ colorMode: 'attractor' });
+      // Enough points for the basin shape to read clearly.
+      if (this.sys.count < BASIN_PARTICLES) {
+        this.countBeforeBasins = this.sys.count;
+        this.setCount(BASIN_PARTICLES);
+      }
+      glide = this.seedRegion(900);
+    } else {
+      if (this.view.style.colorMode === 'attractor') this.view.setStyle({ colorMode: this.colorModeBeforeBasins });
+      glide = this.frameCamera(900, kindChanged ? (a.kind === 'map' ? MAP_VIEW_DIR : VIEW_DIR) : undefined);
+    }
     this.emit();
-    const glide = this.frameCamera(900, kindChanged ? (a.kind === 'map' ? MAP_VIEW_DIR : VIEW_DIR) : undefined);
     await this.tweens.run(500, (k) => (this.view.fade = k));
     await glide;
     this.switching = false;
@@ -164,8 +196,33 @@ export class App {
     void this.applyPreset(this.attractor.examples[0]!);
   }
 
-  reseed() {
-    this.sys.reseed();
+  reseed(mode: SeedMode = 'attractor') {
+    this.followUpToken = null;
+    if (mode === 'region') void this.seedRegion(800);
+    else this.sys.reseed(mode);
+  }
+
+  /**
+   * Basin demo: seed the system's basin region (a flat slice) with particles
+   * colored by the attractor each will reach, and look straight down at it so
+   * the pattern of the starting space is visible before they fly off.
+   */
+  private seedRegion(animateMs: number): Promise<void> {
+    this.sys.reseed('region');
+    const region = this.attractor.basins?.region;
+    if (!region) return this.frameCamera(animateMs);
+    const center = region.min.map((v, i) => (v + region.max[i]!) / 2) as [number, number, number];
+    const radius = 0.5 * Math.hypot(...region.max.map((v, i) => v - region.min[i]!));
+    // Once the particles have had time to reach their attractors, follow them
+    // in: swing round to a 3D view framing the attractors themselves. Any
+    // camera drag, switch or reseed in the meantime cancels this.
+    const token = {};
+    this.followUpToken = token;
+    clearTimeout(this.followUpTimer);
+    this.followUpTimer = setTimeout(() => {
+      if (this.followUpToken === token && this.sys.hasBasins) void this.frameCamera(2000, VIEW_DIR);
+    }, 4000 + animateMs);
+    return this.frameCamera(animateMs, MAP_VIEW_DIR, { center, radius });
   }
 
   /**
@@ -177,6 +234,10 @@ export class App {
     this.reanalyzeTimer = setTimeout(() => {
       this.sys.reanalyze();
       if (this.sys.analysis.ok) this.sys.respawnOutliers(3);
+      // The attractors merged (parameters or dt): nothing left to tell apart.
+      if (!this.sys.hasBasins && this.view.style.colorMode === 'attractor') {
+        this.view.setStyle({ colorMode: this.colorModeBeforeBasins });
+      }
       this.emit();
       if (this.autoFrame) this.reframeIfNeeded();
     }, delay);
@@ -254,10 +315,14 @@ export class App {
    * current view direction unless `toDir` is given, in which case the camera
    * swings round to it during the glide.
    */
-  frameCamera(animateMs = 800, toDir?: THREE.Vector3): Promise<void> {
+  frameCamera(
+    animateMs = 800,
+    toDir?: THREE.Vector3,
+    fit: { center: [number, number, number]; radius: number } = this.sys.analysis,
+  ): Promise<void> {
     const { camera: cam, controls } = this.stage;
-    const { radius } = this.sys.analysis;
-    const toTarget = this.view.worldCenter();
+    const { radius } = fit;
+    const toTarget = this.view.modelToWorld(fit.center);
     const dist = this.frameDistance(radius);
     const fromDir = cam.position.clone().sub(controls.target);
     if (fromDir.lengthSq() < 1e-12) fromDir.copy(VIEW_DIR);

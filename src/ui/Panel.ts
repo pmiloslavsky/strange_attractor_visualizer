@@ -1,11 +1,11 @@
-import { Pane, type BladeApi, type SliderInputBindingApi } from 'tweakpane';
+import { Pane, type BladeApi, type ListInputBindingApi, type SliderInputBindingApi } from 'tweakpane';
 import { ATTRACTORS, CONTROL_RANGES, type Attractor } from '../attractors';
 import { LIMITS, type App, type IntegratorName } from '../app/App';
 import { PALETTE_NAMES, type PaletteName } from '../scene/palettes';
 import { COLOR_MODES, type ColorMode } from '../scene/shaders';
 import { createFamilyTray } from './familyTray';
 
-const GREEK: Record<string, string> = { sigma: 'σ', beta: 'β', rho: 'ρ' };
+const GREEK: Record<string, string> = { sigma: 'σ', beta: 'β', rho: 'ρ', alpha: 'α' };
 const CUSTOM = -1;
 
 /**
@@ -49,7 +49,11 @@ export class Panel {
   private builtFor?: Attractor;
   private syncing = false;
   private particlesSlider!: SliderInputBindingApi;
+  private colorModeList!: ListInputBindingApi<ColorMode>;
   private flowOnly: BladeApi[] = [];
+  /** Controls that only make sense for systems with several attractors. */
+  private basinOnly: BladeApi[] = [];
+  private basinsShown?: boolean;
   private readonly tray: ReturnType<typeof createFamilyTray>;
 
   /** Proxies Tweakpane binds to; copied from / written to the app. */
@@ -216,15 +220,18 @@ export class Panel {
       .on('change', guard((v: number) => app.setStyle({ particleSize: v })));
     sim.addBinding(state, 'paused').on('change', guard((v: boolean) => app.setPaused(v)));
     sim.addButton({ title: 'Reseed particles' }).on('click', () => app.reseed());
+    this.basinOnly.push(
+      sim.addButton({ title: 'Seed basin slice' }).on('click', () => app.reseed('region')),
+    );
     sim.addBinding(app, 'fps', { readonly: true, view: 'graph', min: 0, max: 150, interval: 500 });
 
     const color = pane.addFolder({ title: 'Color' });
-    color
+    this.colorModeList = color
       .addBinding(state, 'colorMode', {
         label: 'color by',
         options: Object.fromEntries(COLOR_MODES.map((m) => [m, m])),
       })
-      .on('change', guard((v: ColorMode) => app.setStyle({ colorMode: v })));
+      .on('change', guard((v: ColorMode) => app.setStyle({ colorMode: v }))) as ListInputBindingApi<ColorMode>;
     color
       .addBinding(state, 'palette', { options: Object.fromEntries(PALETTE_NAMES.map((p) => [p, p])) })
       .on('change', guard((v: PaletteName) => app.setStyle({ palette: v })));
@@ -259,6 +266,16 @@ export class Panel {
     const { app, state } = this;
     const a = app.attractor;
     if (a !== this.builtFor) this.buildParams(a);
+    // Several attractors can appear or merge with parameters or dt, not just on a switch.
+    const basins = app.sys.hasBasins;
+    if (basins !== this.basinsShown) {
+      this.basinsShown = basins;
+      for (const blade of this.basinOnly) blade.hidden = !basins;
+      this.colorModeList.options = COLOR_MODES.filter((m) => basins || m !== 'attractor').map((m) => ({
+        text: m,
+        value: m,
+      }));
+    }
 
     const p = app.sys.params;
     a.params.forEach((spec, i) => (this.params[spec.name] = p[i]!));
