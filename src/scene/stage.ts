@@ -15,6 +15,8 @@ export interface BloomSettings {
 export class Stage {
   readonly renderer: THREE.WebGLRenderer;
   readonly scene = new THREE.Scene();
+  /** Drawn after bloom, so its contents (the photo balls) stay crisp. */
+  readonly overlay = new THREE.Scene();
   readonly camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
   readonly controls: OrbitControls;
   readonly composer: EffectComposer;
@@ -42,8 +44,11 @@ export class Stage {
 
     this.composer = new EffectComposer(this.renderer);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.7, 0.35, 0.15);
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.6, 0.35, 0.15);
     this.composer.addPass(this.bloom);
+    const overlayPass = new RenderPass(this.overlay, this.camera);
+    overlayPass.clear = false;
+    this.composer.addPass(overlayPass);
     this.composer.addPass(new OutputPass());
 
     new ResizeObserver(() => this.resize()).observe(container);
@@ -72,5 +77,16 @@ export class Stage {
   render() {
     this.controls.update();
     this.composer.render();
+  }
+
+  /**
+   * PNG of the current frame. Renders and reads back in the same task, so the
+   * canvas doesn't need preserveDrawingBuffer (which costs performance).
+   */
+  screenshot(): Promise<Blob> {
+    this.composer.render();
+    return new Promise((resolve, reject) =>
+      this.renderer.domElement.toBlob((b) => (b ? resolve(b) : reject(new Error('toBlob failed'))), 'image/png'),
+    );
   }
 }

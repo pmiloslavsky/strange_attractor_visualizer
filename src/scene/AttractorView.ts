@@ -30,7 +30,7 @@ export class AttractorView {
     uSpeedRange: { value: new THREE.Vector2(0, 1) },
     uZRange: { value: new THREE.Vector2(0, 1) },
     uCycle: { value: 0 },
-    uTrailOpacity: { value: 0.1 },
+    uTrailOpacity: { value: 0.07 },
     uFade: { value: 1 },
     uSize: { value: 1 },
     uProjScale: { value: 1 },
@@ -49,7 +49,7 @@ export class AttractorView {
     palette: 'Aurora',
     colorMode: 'speed',
     cycleSpeed: 0.03,
-    trailOpacity: 0.1,
+    trailOpacity: 0.07,
     particleScale: 1,
   };
 
@@ -70,6 +70,14 @@ export class AttractorView {
   /** Overall opacity, used for cross-fades between attractors. */
   set fade(v: number) {
     this.uniforms.uFade.value = v;
+  }
+  get fade(): number {
+    return this.uniforms.uFade.value;
+  }
+
+  /** Drawing-buffer pixels per world unit at distance 1. */
+  get projScale(): number {
+    return this.uniforms.uProjScale.value;
   }
 
   setStyle(patch: Partial<ViewStyle>) {

@@ -1,11 +1,13 @@
 import * as THREE from 'three';
 import { ATTRACTORS, CONTROL_RANGES, type Attractor } from './attractors';
 import { AttractorView } from './scene/AttractorView';
+import { FamilyView } from './scene/FamilyView';
 import { PALETTE_NAMES } from './scene/palettes';
 import { COLOR_MODES } from './scene/shaders';
 import { Stage } from './scene/stage';
 import { Tweens } from './scene/tween';
 import { ParticleSystem } from './simulation/ParticleSystem';
+import { createFamilyTray } from './ui/familyTray';
 import './style.css';
 
 const DEFAULT_PARTICLES = 1500;
@@ -18,7 +20,10 @@ const stage = new Stage(app);
 const sys = new ParticleSystem(ATTRACTORS[0]!, DEFAULT_PARTICLES, DEFAULT_TRAIL);
 const view = new AttractorView(sys);
 const tweens = new Tweens();
+const family = new FamilyView(sys);
 stage.scene.add(view.group);
+stage.overlay.add(family.group);
+const familyTray = createFamilyTray(family, document.body);
 stage.onResize = (h) => view.setProjection(stage.camera, h);
 stage.resize();
 
@@ -88,7 +93,17 @@ function updateHud() {
     `<b>${sys.attractor.name}</b> · ${sys.count} particles · trail ${sys.trailLength}<br>` +
     `color: ${s.colorMode} · palette: ${s.palette}${paused ? ' · paused' : ''}<br>` +
     `<span class="dim">1–${ATTRACTORS.length} system · C color · P palette · R auto-rotate · ` +
-    `[ ] particles · - = trail · space pause · H hide</span>`;
+    `[ ] particles · - = trail · F photos · S screenshot · space pause · H hide</span>`;
+}
+
+/** Download the current frame as a PNG (the original's S hotkey). */
+async function saveScreenshot() {
+  const blob = await stage.screenshot();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${sys.attractor.id}-${new Date().toISOString().replace(/[:.]/g, '-')}.png`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
 function cycle<T>(list: readonly T[], current: T): T {
@@ -103,7 +118,11 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === 'p') view.setStyle({ palette: cycle(PALETTE_NAMES, view.style.palette) });
   else if (e.key === 'r') stage.controls.autoRotate = !stage.controls.autoRotate;
   else if (e.key === ' ') paused = !paused;
-  else if (e.key === 'h') hud.hidden = !hud.hidden;
+  else if (e.key === 'h') hud.hidden = familyTray.element.hidden = !hud.hidden;
+  else if (e.key === 'f') {
+    family.visible = !family.visible;
+    familyTray.refresh();
+  } else if (e.key === 's') void saveScreenshot();
   else if (e.key === '[' || e.key === ']') {
     const n = Math.round(sys.count * (e.key === ']' ? 1.5 : 1 / 1.5));
     sys.configure(THREE.MathUtils.clamp(n, CONTROL_RANGES.particles.min, 20000), sys.trailLength);
@@ -128,7 +147,8 @@ stage.renderer.setAnimationLoop((now) => {
   tweens.tick(now);
   if (!paused) sys.advance(realDt * sys.attractor.simSpeed);
   view.sync(realDt);
+  family.sync(view.fade, stage.camera, view.projScale);
   stage.render();
 });
 
-if (import.meta.env.DEV) Object.assign(window, { __app: { sys, view, stage } });
+if (import.meta.env.DEV) Object.assign(window, { __app: { sys, view, stage, family } });

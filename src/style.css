@@ -34,3 +34,57 @@ body {
 .hud .dim {
   opacity: 0.6;
 }
+
+.family-tray {
+  position: fixed;
+  top: max(16px, env(safe-area-inset-top));
+  right: 16px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.family-tray button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border: 0;
+  padding: 0;
+}
+
+.family-thumb {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #1a1d29 center / cover no-repeat;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25);
+  transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+}
+
+.family-thumb:hover,
+.family-thumb:focus-visible {
+  transform: scale(1.12);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.7);
+  outline: none;
+}
+
+.family-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 15px;
+  line-height: 28px;
+  opacity: 0.75;
+}
+
+.family-btn:hover,
+.family-btn:focus-visible {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.16);
+  outline: none;
+}
+
+.family-tray.off .family-thumb {
+  opacity: 0.35;
+}
