@@ -36,8 +36,13 @@ export type Derivative<P extends readonly ParamSpec[] = readonly ParamSpec[]> = 
 export interface AttractorDef<P extends readonly ParamSpec[] = readonly ParamSpec[]> {
   readonly id: string;
   readonly name: string;
+  /**
+   * 'flow': a continuous ODE system (the original seven), drawn with trails.
+   * 'map': a 2D iterated map (see defineMap), drawn as a dense point cloud.
+   */
+  readonly kind: 'flow' | 'map';
   /** Human-readable system, one line per axis, for display in the UI. */
-  readonly equations: readonly [string, string, string];
+  readonly equations: readonly string[];
   readonly params: P;
   /** Known interesting parameter sets. `examples[0]` is the default. */
   readonly examples: readonly ParamValues<P>[];
@@ -63,8 +68,37 @@ export type Attractor = AttractorDef<readonly ParamSpec[]>;
  * example set and the derivative's `p` tuple to the length of `params`, so a
  * missing or extra parameter is a compile error instead of a runtime NaN.
  */
-export function defineAttractor<const P extends readonly ParamSpec[]>(def: AttractorDef<P>): Attractor {
-  return def as unknown as Attractor;
+export function defineAttractor<const P extends readonly ParamSpec[]>(
+  def: Omit<AttractorDef<P>, 'kind'>,
+): Attractor {
+  return { ...def, kind: 'flow' } as unknown as Attractor;
+}
+
+/** Writes the next point of a 2D map into `out`. */
+export type MapFn<P extends readonly ParamSpec[]> = (x: number, y: number, p: ParamValues<P>, out: [number, number]) => void;
+
+/**
+ * Define a 2D iterated map (x, y) → (x', y') in terms of the ODE machinery.
+ *
+ * One explicit Euler step with dt = 1 is x + 1·f(x). Choosing
+ * f(x) = map(x) − x makes that step land exactly on map(x), so a map runs
+ * through the same particle system, analysis and tests as the flows, with
+ * dt fixed at 1 and simSpeed meaning iterations per second. z is pinned to 0
+ * (the map lives in the z = 0 plane). Only Euler is valid for maps; RK4 would
+ * blend intermediate points that have no meaning for a map.
+ */
+export function defineMap<const P extends readonly ParamSpec[]>(
+  def: Omit<AttractorDef<P>, 'kind' | 'dt' | 'derivative'> & { readonly map: MapFn<P> },
+): Attractor {
+  const next: [number, number] = [0, 0];
+  const { map, ...rest } = def;
+  const derivative: Derivative<P> = (x, y, z, p, out) => {
+    map(x, y, p, next);
+    out[0] = next[0] - x;
+    out[1] = next[1] - y;
+    out[2] = -z;
+  };
+  return { ...rest, kind: 'map', dt: 1, derivative } as unknown as Attractor;
 }
 
 const scratch: Vec3 = [0, 0, 0];

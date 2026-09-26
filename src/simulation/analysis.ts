@@ -14,7 +14,7 @@ export interface Analysis {
   readonly samples: Float32Array;
   readonly center: Vec3;
   readonly radius: number;
-  /** Robust (percentile) range of model-space z, for height coloring. */
+  /** Robust (percentile) range along the height axis (z for flows, y for maps), for height coloring. */
   readonly zRange: [number, number];
   /** Robust range of |d(x,y,z)/dt|, for speed coloring. */
   readonly speedRange: [number, number];
@@ -64,7 +64,7 @@ export function analyze(a: Attractor, p: readonly number[], dt: number): Analysi
       }
     }
     if (escaped) continue;
-    const result = summarize(samples.subarray(0, n * 3), speeds.subarray(0, n));
+    const result = summarize(samples.subarray(0, n * 3), speeds.subarray(0, n), a.kind === 'map' ? 1 : 2);
     const scale = 1 + Math.hypot(...result.center);
     if (result.radius > COLLAPSED * scale) return result;
     if (!best || result.radius > best.radius) best = result;
@@ -95,7 +95,7 @@ function axisRange(samples: Float32Array, axis: number, q: number): [number, num
   return [percentile(v, q), percentile(v, 1 - q)];
 }
 
-function summarize(samples: Float32Array, speeds: Float32Array): Analysis {
+function summarize(samples: Float32Array, speeds: Float32Array, heightAxis: number): Analysis {
   const ranges = [0, 1, 2].map((axis) => axisRange(samples, axis, 0.01)) as [number, number][];
   const center = ranges.map(([a, b]) => (a + b) / 2) as Vec3;
   const radius = Math.max(0.5 * Math.hypot(...ranges.map(([a, b]) => b - a)), 1e-3);
@@ -108,7 +108,7 @@ function summarize(samples: Float32Array, speeds: Float32Array): Analysis {
     samples,
     center,
     radius,
-    zRange: axisRange(samples, 2, 0.02),
+    zRange: axisRange(samples, heightAxis, 0.02),
     speedRange: [speedLo, speedHi],
   };
 }

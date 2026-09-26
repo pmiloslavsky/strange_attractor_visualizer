@@ -33,12 +33,14 @@ export class AttractorView {
     uColorMode: { value: 0 },
     uSpeedRange: { value: new THREE.Vector2(0, 1) },
     uZRange: { value: new THREE.Vector2(0, 1) },
+    uHeightAxis: { value: new THREE.Vector3(0, 0, 1) },
     uCycle: { value: 0 },
     uTrailOpacity: { value: 0.07 },
     uHeadOpacity: { value: 1 },
     uFade: { value: 1 },
     uSize: { value: 1 },
     uProjScale: { value: 1 },
+    uMinPointPx: { value: 2 },
   };
 
   private trails?: THREE.LineSegments;
@@ -126,12 +128,18 @@ export class AttractorView {
     u.uSpeedRange.value.set(...sys.speedRange);
     u.uZRange.value.set(...sys.zRange);
     u.uSize.value = this.style.particleSize;
+    u.uHeightAxis.value.set(0, sys.heightAxis === 1 ? 1 : 0, sys.heightAxis === 2 ? 1 : 0);
     // Additive blending makes brightness grow with density. Above the default
     // density, dim trails and heads so more particles read as smoother, not
     // as a white-out. Below it, leave them alone (sparse scenes stay crisp).
     const density = (n * sys.trailLength) / (REFERENCE_PARTICLES * REFERENCE_TRAIL);
     u.uTrailOpacity.value = this.style.trailOpacity * Math.min(1, density ** -0.8);
     u.uHeadOpacity.value = Math.min(1, (n / REFERENCE_PARTICLES) ** -0.5);
+    // Maps are a point cloud: the density image *is* the picture, so no
+    // trails (consecutive iterates jump across the plane) and finer points.
+    const isMap = sys.attractor.kind === 'map';
+    this.trails!.visible = !isMap;
+    u.uMinPointPx.value = isMap ? 1.5 : 2;
     u.uCycle.value = (u.uCycle.value + realDt * this.style.cycleSpeed) % 2;
     this.heads!.geometry.setDrawRange(sys.head * n, n);
   }

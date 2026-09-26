@@ -43,7 +43,13 @@ export class ParticleSystem {
   analysis!: Analysis;
   /** Live robust ranges, eased toward the current distribution each frame. */
   speedRange: [number, number] = [0, 1];
+  /** Range along heightAxis (named for the flows' usual z-up). */
   zRange: [number, number] = [0, 1];
+
+  /** Model axis used for "height" coloring: z for flows, y for planar maps. */
+  get heightAxis(): 1 | 2 {
+    return this.attractor.kind === 'map' ? 1 : 2;
+  }
 
   /** Incremented when buffers are reallocated (the view must rebuild). */
   version = 0;
@@ -149,7 +155,10 @@ export class ParticleSystem {
     steps = Math.min(steps, Math.max(1, Math.floor(MAX_EVALS_PER_FRAME / count)));
     if (steps <= 0) return;
 
-    for (let s = 0; s < steps; s++) this.integrator(this.attractor.derivative, pos, count, this.params, dt);
+    // Maps are defined as an Euler step with dt = 1 (see defineMap); any other
+    // integrator would produce points that aren't iterates of the map.
+    const integrate = this.attractor.kind === 'map' ? euler : this.integrator;
+    for (let s = 0; s < steps; s++) integrate(this.attractor.derivative, pos, count, this.params, dt);
 
     const prevSlot = this.head;
     const slot = (prevSlot + 1) % this.trailLength;
@@ -225,7 +234,7 @@ export class ParticleSystem {
     for (let k = 0; k < n; k++) {
       const i = Math.floor(k * stride);
       s[k] = this.speed[base + i]!;
-      z[k] = this.pos[3 * i + 2]!;
+      z[k] = this.pos[3 * i + this.heightAxis]!;
     }
     s.sort();
     z.sort();

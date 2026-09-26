@@ -9,7 +9,8 @@ glowing, fading trails, palette coloring by speed / age / height, bloom, and
 drag-to-orbit camera controls. A from-scratch web rebuild of the C++/SFML/TGUI
 [ode_simulation](https://github.com/pmiloslavsky/demo/tree/master/ode_simulation)
 demo, keeping its seven systems, their parameter tables, and its three photo
-balls riding along the flow.
+balls riding along the flow. It adds two classic 2D chaotic maps, Clifford and
+Peter de Jong, drawn as clouds of hundreds of thousands of points.
 
 Static site, no backend. Vite + TypeScript + Three.js.
 
@@ -19,7 +20,7 @@ Static site, no backend. Vite + TypeScript + Three.js.
 |:---:|:---:|:---:|
 | <img src="docs/screenshots/lorenz.jpg" width="260" alt="Lorenz"><br>**Lorenz** | <img src="docs/screenshots/chen-lee.jpg" width="260" alt="Chen-Lee"><br>**Chen–Lee** | <img src="docs/screenshots/rossler.jpg" width="260" alt="Rössler"><br>**Rössler** |
 | <img src="docs/screenshots/aizawa.jpg" width="260" alt="Aizawa"><br>**Aizawa** | <img src="docs/screenshots/three-scroll.jpg" width="260" alt="Three-Scroll Unified"><br>**Three-Scroll Unified** | <img src="docs/screenshots/thomas.jpg" width="260" alt="Thomas"><br>**Thomas** |
-| <img src="docs/screenshots/dadras.jpg" width="260" alt="Dadras"><br>**Dadras** | | |
+| <img src="docs/screenshots/dadras.jpg" width="260" alt="Dadras"><br>**Dadras** | <img src="docs/screenshots/clifford.jpg" width="260" alt="Clifford"><br>**Clifford** (2D map) | <img src="docs/screenshots/de-jong.jpg" width="260" alt="Peter de Jong"><br>**Peter de Jong** (2D map) |
 
 Where these equations come from, who discovered them, and links to the
 original papers: **[README_ATTRACTOR_HISTORY.md](README_ATTRACTOR_HISTORY.md)**.
@@ -31,7 +32,7 @@ auto-rotates until you turn it off.
 
 The control panel (a side panel on desktop, a pull-up sheet on phones) has:
 
-- **Attractor picker**: thumbnails of all seven systems. Switching cross-fades
+- **Attractor picker**: thumbnails of all nine systems. Switching cross-fades
   and glides the camera to the new shape.
 - **Equations** of the current system.
 - **Parameters**: a slider per parameter, with the original's ranges, plus a
@@ -39,7 +40,9 @@ The control panel (a side panel on desktop, a pull-up sheet on phones) has:
   the attractor smoothly. The panel warns you when a setting diverges or
   collapses to a fixed point.
 - **Simulation**: dt, speed, integrator (the original's Euler or Runge-Kutta 4),
-  particle count (up to 8,000), trail length, particle size, pause, reseed.
+  particle count (up to 8,000; 400,000 for maps), trail length, particle
+  size, pause, reseed. Maps always iterate one step at a time, so dt,
+  integrator and trails don't apply to them and are hidden.
 - **Color**: color by speed, age, height or particle; six palettes; color
   cycling; trail brightness.
 - **Glow**: bloom strength, radius and threshold.
@@ -51,7 +54,7 @@ Keyboard:
 
 | Key | Action |
 | --- | --- |
-| 1–7 | Switch attractor |
+| 1–9 | Switch attractor |
 | C / P | Cycle color mode / palette |
 | R | Toggle auto-rotate |
 | `[` `]` | Fewer / more particles |
@@ -67,7 +70,8 @@ As in the original, three photo-textured balls ride on the first three
 particles. The round thumbnails under "Photo balls" in the panel show them. Click one
 to replace that photo with an image from your computer. Your choice is
 remembered in this browser only and never uploaded. ↺ restores the original
-photos, and ◉ (or F) hides the balls.
+photos, and ◉ (or F) hides the balls. They only appear on the flows: on a map,
+points jump across the plane every iteration.
 
 ## Develop
 

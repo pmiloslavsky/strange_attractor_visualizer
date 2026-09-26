@@ -73,8 +73,11 @@ export class FamilyView {
     const { sys } = this;
     const worldSize = sys.analysis.radius * RELATIVE_SIZE;
     this.group.updateMatrixWorld();
+    // On a map, particles jump across the plane every iteration, so a photo
+    // riding one would just teleport around; only show them on flows.
+    const ridable = sys.attractor.kind === 'flow';
     this.sprites.forEach((sprite, i) => {
-      sprite.visible = this.visible && i < sys.count && !!sprite.material.map;
+      sprite.visible = this.visible && ridable && i < sys.count && !!sprite.material.map;
       if (!sprite.visible) return;
       sprite.position.fromArray(sys.pos, 3 * i);
       const dist = this.tmp.copy(sprite.position).applyMatrix4(this.group.matrixWorld).distanceTo(camera.position);

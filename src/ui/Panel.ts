@@ -1,4 +1,4 @@
-import { Pane } from 'tweakpane';
+import { Pane, type BladeApi, type SliderInputBindingApi } from 'tweakpane';
 import { ATTRACTORS, CONTROL_RANGES, type Attractor } from '../attractors';
 import { LIMITS, type App, type IntegratorName } from '../app/App';
 import { PALETTE_NAMES, type PaletteName } from '../scene/palettes';
@@ -48,6 +48,8 @@ export class Panel {
   private readonly mainPane: Pane;
   private builtFor?: Attractor;
   private syncing = false;
+  private particlesSlider!: SliderInputBindingApi;
+  private flowOnly: BladeApi[] = [];
   private readonly tray: ReturnType<typeof createFamilyTray>;
 
   /** Proxies Tweakpane binds to; copied from / written to the app. */
@@ -123,7 +125,7 @@ export class Panel {
       const img = el('img');
       img.src = `thumbs/${a.id}.jpg`;
       img.alt = '';
-      b.append(img, el('span', undefined, a.name.replace('-Unified', '')));
+      b.append(img, el('span', undefined, a.name.replace('-Unified', '').replace('Peter ', '')));
       b.addEventListener('click', () => void this.app.switchTo(a));
       this.picker.append(b);
     }
@@ -164,6 +166,10 @@ export class Panel {
 
     this.paramPane = pane;
     this.builtFor = a;
+    for (const blade of this.flowOnly) blade.hidden = a.kind === 'map';
+    const limits = this.app.particleLimits;
+    this.particlesSlider.min = limits.min;
+    this.particlesSlider.max = limits.max;
     this.equations.innerHTML = a.equations.map((e) => `<div>${e}</div>`).join('');
     for (const b of this.picker.querySelectorAll<HTMLElement>('.pick')) {
       b.classList.toggle('active', b.dataset.id === a.id);
@@ -178,7 +184,7 @@ export class Panel {
     };
 
     const sim = pane.addFolder({ title: 'Simulation' });
-    sim
+    const dt = sim
       .addBinding(state, 'dt', {
         min: CONTROL_RANGES.dt.min,
         max: CONTROL_RANGES.dt.max,
@@ -189,20 +195,22 @@ export class Panel {
     sim
       .addBinding(state, 'speed', { ...LIMITS.speed, step: 0.05, format: (v: number) => `${v.toFixed(2)}×` })
       .on('change', guard((v: number) => (app.speed = v)));
-    sim
+    const integrator = sim
       .addBinding(state, 'integrator', { options: { 'Euler (original)': 'euler', 'Runge-Kutta 4': 'rk4' } })
       .on('change', guard((v: IntegratorName) => app.setIntegrator(v)));
     // Resizing reallocates buffers, so apply when the drag ends.
-    sim
+    this.particlesSlider = sim
       .addBinding(state, 'particles', { ...LIMITS.particles, step: 1, format: (v: number) => v.toFixed(0) })
       .on('change', (ev) => {
         if (!this.syncing && ev.last) app.setCount(ev.value);
-      });
-    sim
+      }) as SliderInputBindingApi;
+    const trail = sim
       .addBinding(state, 'trail', { ...LIMITS.trail, step: 1, format: (v: number) => v.toFixed(0) })
       .on('change', (ev) => {
         if (!this.syncing && ev.last) app.setTrail(ev.value);
       });
+    // Maps iterate with a fixed step of 1, only with Euler, and have no trails.
+    this.flowOnly = [dt, integrator, trail];
     sim
       .addBinding(state, 'particleSize', { label: 'size', ...LIMITS.particleSize, step: 0.01 })
       .on('change', guard((v: number) => app.setStyle({ particleSize: v })));

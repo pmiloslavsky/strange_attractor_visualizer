@@ -1,6 +1,8 @@
 import { aizawa } from './aizawa';
 import { chenLee } from './chenLee';
+import { clifford } from './clifford';
 import { dadras } from './dadras';
+import { deJong } from './deJong';
 import { lorenz } from './lorenz';
 import { rossler } from './rossler';
 import { thomas } from './thomas';
@@ -9,7 +11,10 @@ import type { Attractor } from './types';
 
 export * from './types';
 
-/** Mirrors the original `vector<StrangeAttractorDE> DE` table, same order. */
+/**
+ * The original `vector<StrangeAttractorDE> DE` table, same order, followed by
+ * the 2D maps added in this port.
+ */
 export const ATTRACTORS: readonly Attractor[] = [
   lorenz,
   chenLee,
@@ -18,6 +23,8 @@ export const ATTRACTORS: readonly Attractor[] = [
   threeScroll,
   thomas,
   dadras,
+  clifford,
+  deJong,
 ];
 
 export function getAttractor(id: string): Attractor {

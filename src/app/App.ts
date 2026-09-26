@@ -9,6 +9,8 @@ import { ParticleSystem } from '../simulation/ParticleSystem';
 
 export const LIMITS = {
   particles: { min: 1, max: 8000 },
+  /** Maps are points only (no trails), so they can afford far more. */
+  mapParticles: { min: 1000, max: 400_000 },
   trail: { min: 2, max: 2000 },
   /** particles × trail cap: keeps trail buffers under ~100 MB. */
   maxVertices: 3_000_000,
@@ -23,6 +25,12 @@ const DEFAULT_PARTICLES = 1500;
 const DEFAULT_TRAIL = 240;
 /** Initial viewing direction (from target toward camera), in world space. */
 const VIEW_DIR = new THREE.Vector3(1, 0.45, 1.2).normalize();
+/**
+ * Maps lie in the model's z = 0 plane, which is the world's horizontal plane,
+ * so view them from (almost) straight above. The slight tilt fixes which way
+ * is up on screen (model +y), and auto-rotate then spins the image in place.
+ */
+const MAP_VIEW_DIR = new THREE.Vector3(0, 1, 0.02).normalize();
 
 /**
  * Owns the simulation, its view and the camera, and exposes the operations the
@@ -51,6 +59,12 @@ export class App {
   /** Identifies the running preset tween; replaced to cancel it. */
   private presetToken: object | null = null;
   private framed = { center: new THREE.Vector3(), radius: 1 };
+  /** Last particle/trail settings used for each kind, restored when switching back. */
+  private kindConfig = {
+    flow: { count: DEFAULT_PARTICLES, trail: DEFAULT_TRAIL },
+    // Map iteration runs on the CPU; start phones (narrow screens) lighter.
+    map: { count: matchMedia('(max-width: 720px)').matches ? 80_000 : 200_000, trail: 2 },
+  };
 
   constructor(container: HTMLElement) {
     this.stage = new Stage(container);
@@ -88,10 +102,19 @@ export class App {
     this.presetToken = null;
     clearTimeout(this.reanalyzeTimer);
     await this.tweens.run(250, (k) => (this.view.fade = 1 - k));
+    const prevKind = this.sys.attractor.kind;
+    this.kindConfig[prevKind] = { count: this.sys.count, trail: this.sys.trailLength };
     this.sys.setAttractor(a);
+    const kindChanged = a.kind !== prevKind;
+    if (kindChanged) {
+      // Positions were just reseeded on the new attractor, so configure()
+      // keeps them and only adds or drops particles.
+      const { count, trail } = this.kindConfig[a.kind];
+      this.sys.configure(count, trail);
+    }
     this.view.setStyle({ particleSize: a.particleSize });
     this.emit();
-    const glide = this.frameCamera(900);
+    const glide = this.frameCamera(900, kindChanged ? (a.kind === 'map' ? MAP_VIEW_DIR : VIEW_DIR) : undefined);
     await this.tweens.run(500, (k) => (this.view.fade = k));
     await glide;
     this.switching = false;
@@ -170,16 +193,26 @@ export class App {
 
   // --- Particles & style -----------------------------------------------------
 
+  /** Particle-count range for the current kind of system. */
+  get particleLimits(): { min: number; max: number } {
+    return this.attractor.kind === 'map' ? LIMITS.mapParticles : LIMITS.particles;
+  }
+
   /** Keeps particles × trail within the vertex budget by shortening trails if needed. */
   setCount(n: number) {
-    const count = THREE.MathUtils.clamp(Math.round(n), LIMITS.particles.min, LIMITS.particles.max);
-    const trail = Math.min(this.sys.trailLength, Math.floor(LIMITS.maxVertices / count));
+    const { min, max } = this.particleLimits;
+    const count = THREE.MathUtils.clamp(Math.round(n), min, max);
+    // Maps have no trails; the budget only applies to flows.
+    const trail = this.attractor.kind === 'map'
+      ? LIMITS.trail.min
+      : Math.min(this.sys.trailLength, Math.floor(LIMITS.maxVertices / count));
     this.sys.configure(count, Math.max(LIMITS.trail.min, trail));
     this.emit();
   }
 
   /** Keeps particles × trail within the vertex budget by reducing particles if needed. */
   setTrail(n: number) {
+    if (this.attractor.kind === 'map') return; // maps are drawn without trails
     const trail = THREE.MathUtils.clamp(Math.round(n), LIMITS.trail.min, LIMITS.trail.max);
     const count = Math.min(this.sys.count, Math.floor(LIMITS.maxVertices / trail));
     this.sys.configure(Math.max(LIMITS.particles.min, count), trail);
@@ -216,15 +249,21 @@ export class App {
     return (radius / Math.sin(Math.min(vfov, hfov))) * 1.1;
   }
 
-  /** Move the orbit target and camera onto the current attractor, keeping the view direction. */
-  frameCamera(animateMs = 800): Promise<void> {
+  /**
+   * Move the orbit target and camera onto the current attractor. Keeps the
+   * current view direction unless `toDir` is given, in which case the camera
+   * swings round to it during the glide.
+   */
+  frameCamera(animateMs = 800, toDir?: THREE.Vector3): Promise<void> {
     const { camera: cam, controls } = this.stage;
     const { radius } = this.sys.analysis;
     const toTarget = this.view.worldCenter();
     const dist = this.frameDistance(radius);
-    const dir = cam.position.clone().sub(controls.target);
-    if (dir.lengthSq() < 1e-12) dir.copy(VIEW_DIR);
-    dir.normalize();
+    const fromDir = cam.position.clone().sub(controls.target);
+    if (fromDir.lengthSq() < 1e-12) fromDir.copy(VIEW_DIR);
+    fromDir.normalize();
+    const endDir = (toDir ?? fromDir).clone().normalize();
+    const dir = new THREE.Vector3();
     this.framed = { center: toTarget.clone(), radius };
 
     const fromTarget = controls.target.clone();
@@ -239,6 +278,10 @@ export class App {
       // Interpolate distance geometrically: scales differ by 100× between systems.
       const d = fromDist * Math.pow(dist / fromDist, k);
       controls.target.lerpVectors(fromTarget, toTarget, k);
+      dir.lerpVectors(fromDir, endDir, k);
+      // Opposite directions blend through zero; jump to the end one instead.
+      if (dir.lengthSq() < 1e-6) dir.copy(endDir);
+      dir.normalize();
       cam.position.copy(controls.target).addScaledVector(dir, d);
     };
     if (animateMs <= 0) {
