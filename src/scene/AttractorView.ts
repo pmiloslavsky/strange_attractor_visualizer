@@ -3,14 +3,18 @@ import type { ParticleSystem } from '../simulation/ParticleSystem';
 import { paletteTexture, type PaletteName } from './palettes';
 import { COLOR_MODES, headFragment, headVertex, trailFragment, trailVertex, type ColorMode } from './shaders';
 
+/** The density the default trail opacity is tuned for (particles × trail length). */
+const REFERENCE_PARTICLES = 1500;
+const REFERENCE_TRAIL = 240;
+
 export interface ViewStyle {
   palette: PaletteName;
   colorMode: ColorMode;
   /** Palette offset per second of real time; 0 disables cycling. */
   cycleSpeed: number;
   trailOpacity: number;
-  /** Multiplies the attractor's particle size. */
-  particleScale: number;
+  /** World-space particle diameter (the original's particle_size slider). */
+  particleSize: number;
 }
 
 /**
@@ -31,6 +35,7 @@ export class AttractorView {
     uZRange: { value: new THREE.Vector2(0, 1) },
     uCycle: { value: 0 },
     uTrailOpacity: { value: 0.07 },
+    uHeadOpacity: { value: 1 },
     uFade: { value: 1 },
     uSize: { value: 1 },
     uProjScale: { value: 1 },
@@ -50,7 +55,7 @@ export class AttractorView {
     colorMode: 'speed',
     cycleSpeed: 0.03,
     trailOpacity: 0.07,
-    particleScale: 1,
+    particleSize: 0.33,
   };
 
   constructor(private readonly sys: ParticleSystem) {
@@ -85,7 +90,6 @@ export class AttractorView {
     this.style = { ...this.style, ...patch };
     if (patch.palette && patch.palette !== prevPalette) paletteTexture(this.style.palette, this.uniforms.uPalette.value);
     this.uniforms.uColorMode.value = COLOR_MODES.indexOf(this.style.colorMode);
-    this.uniforms.uTrailOpacity.value = this.style.trailOpacity;
   }
 
   /** Pixels per world unit at distance 1, for world-sized point sprites. */
@@ -121,7 +125,13 @@ export class AttractorView {
     u.uHead.value = sys.head;
     u.uSpeedRange.value.set(...sys.speedRange);
     u.uZRange.value.set(...sys.zRange);
-    u.uSize.value = sys.attractor.particleSize * this.style.particleScale;
+    u.uSize.value = this.style.particleSize;
+    // Additive blending makes brightness grow with density. Above the default
+    // density, dim trails and heads so more particles read as smoother, not
+    // as a white-out. Below it, leave them alone (sparse scenes stay crisp).
+    const density = (n * sys.trailLength) / (REFERENCE_PARTICLES * REFERENCE_TRAIL);
+    u.uTrailOpacity.value = this.style.trailOpacity * Math.min(1, density ** -0.8);
+    u.uHeadOpacity.value = Math.min(1, (n / REFERENCE_PARTICLES) ** -0.5);
     u.uCycle.value = (u.uCycle.value + realDt * this.style.cycleSpeed) % 2;
     this.heads!.geometry.setDrawRange(sys.head * n, n);
   }

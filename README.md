@@ -29,7 +29,25 @@ original papers: **[README_ATTRACTOR_HISTORY.md](README_ATTRACTOR_HISTORY.md)**.
 Drag to orbit (with inertia), scroll or pinch to zoom. The camera slowly
 auto-rotates until you turn it off.
 
-Keyboard, until the control panel lands:
+The control panel (a side panel on desktop, a pull-up sheet on phones) has:
+
+- **Attractor picker**: thumbnails of all seven systems. Switching cross-fades
+  and glides the camera to the new shape.
+- **Equations** of the current system.
+- **Parameters**: a slider per parameter, with the original's ranges, plus a
+  preset menu of the known interesting parameter sets. Picking a preset morphs
+  the attractor smoothly. The panel warns you when a setting diverges or
+  collapses to a fixed point.
+- **Simulation**: dt, speed, integrator (the original's Euler or Runge-Kutta 4),
+  particle count (up to 8,000), trail length, particle size, pause, reseed.
+- **Color**: color by speed, age, height or particle; six palettes; color
+  cycling; trail brightness.
+- **Glow**: bloom strength, radius and threshold.
+- **Camera**: auto-rotate and its speed, auto-framing when parameters resize
+  the attractor, and a button to re-frame.
+- **Capture**: save a PNG screenshot.
+
+Keyboard:
 
 | Key | Action |
 | --- | --- |
@@ -46,7 +64,7 @@ Keyboard, until the control panel lands:
 ### Photo balls
 
 As in the original, three photo-textured balls ride on the first three
-particles. The round thumbnails in the top-right corner show them. Click one
+particles. The round thumbnails under "Photo balls" in the panel show them. Click one
 to replace that photo with an image from your computer. Your choice is
 remembered in this browser only and never uploaded. ↺ restores the original
 photos, and ◉ (or F) hides the balls.
@@ -69,8 +87,11 @@ npm run build    # static output in dist/
   particle system with its trail ring buffer.
 - `src/scene/`: Three.js stage (camera, controls, bloom), trail and particle
   shaders, palettes, photo balls.
-- `src/ui/`: on-screen controls.
+- `src/app/`: the `App` class tying simulation, view and camera together; the
+  single API the panel and keyboard use.
+- `src/ui/`: the control panel (Tweakpane) and photo tray.
 - `public/family/`: the default photo-ball images from the original project.
+- `public/thumbs/`: attractor picker thumbnails.
 
 ## Deploy
 

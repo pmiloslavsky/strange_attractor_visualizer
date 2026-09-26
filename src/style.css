@@ -1,9 +1,20 @@
+:root {
+  --bg: #05060a;
+  --panel-bg: rgba(14, 16, 26, 0.72);
+  --panel-border: rgba(255, 255, 255, 0.08);
+  --text: #e6e8ef;
+  --text-dim: rgba(230, 232, 239, 0.6);
+  --accent: #7fd6ff;
+  --radius: 12px;
+  color-scheme: dark;
+}
+
 html,
 body {
   margin: 0;
   height: 100%;
-  background: #05060a;
-  color: #e6e8ef;
+  background: var(--bg);
+  color: var(--text);
   font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
   overflow: hidden;
 }
@@ -20,33 +31,227 @@ body {
   touch-action: none;
 }
 
-.hud {
-  position: fixed;
-  left: 16px;
-  bottom: 16px;
-  font-size: 13px;
-  line-height: 1.5;
-  opacity: 0.75;
-  pointer-events: none;
-  text-shadow: 0 1px 3px #000;
+button {
+  font: inherit;
+  color: inherit;
 }
 
-.hud .dim {
-  opacity: 0.6;
+/* --- Panel ---------------------------------------------------------------- */
+
+.panel {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  width: 300px;
+  max-height: calc(100dvh - 32px);
+  display: flex;
+  flex-direction: column;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  backdrop-filter: blur(14px) saturate(1.3);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+  overflow: hidden;
+}
+
+.panel[hidden] {
+  display: none;
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 10px 10px 14px;
+  flex: none;
+}
+
+.panel-title {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.panel-toggle {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.panel-toggle::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transition: transform 160ms ease;
+}
+
+/* The chevron points the way the panel will move: up to fold, down to open. */
+.panel-toggle::before {
+  transform: translateY(2px) rotate(-135deg);
+}
+
+.panel.collapsed .panel-toggle::before {
+  transform: translateY(-2px) rotate(45deg);
+}
+
+.panel-toggle:hover,
+.panel-toggle:focus-visible {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.08);
+  outline: none;
+}
+
+.panel-body {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 10px 12px;
+  scrollbar-width: thin;
+}
+
+.panel.collapsed .panel-body {
+  display: none;
+}
+
+/* Attractor picker */
+
+.picker {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.pick {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  text-align: center;
+  font-size: 10px;
+  color: var(--text-dim);
+  min-width: 0;
+}
+
+.pick img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 7px;
+  box-shadow: 0 0 0 1px var(--panel-border);
+  transition: box-shadow 120ms ease, transform 120ms ease;
+}
+
+.pick span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pick:hover img,
+.pick:focus-visible img {
+  transform: translateY(-1px);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4);
+}
+
+.pick:focus-visible {
+  outline: none;
+}
+
+.pick.active {
+  color: var(--text);
+}
+
+.pick.active img {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.equations {
+  font-family: ui-monospace, 'Cascadia Code', Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+}
+
+.status {
+  margin-bottom: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 170, 60, 0.12);
+  color: #ffcf8a;
+  line-height: 1.4;
+}
+
+.status[hidden] {
+  display: none;
+}
+
+/* Tweakpane theme, matched to the panel */
+
+.tp-host {
+  margin-bottom: 6px;
+  --tp-base-background-color: transparent;
+  --tp-base-shadow-color: transparent;
+  --tp-container-background-color: rgba(255, 255, 255, 0.07);
+  --tp-container-background-color-active: rgba(255, 255, 255, 0.16);
+  --tp-container-background-color-focus: rgba(255, 255, 255, 0.13);
+  --tp-container-background-color-hover: rgba(255, 255, 255, 0.1);
+  --tp-container-foreground-color: var(--text);
+  --tp-groove-foreground-color: rgba(255, 255, 255, 0.08);
+  --tp-input-background-color: rgba(255, 255, 255, 0.07);
+  --tp-input-background-color-active: rgba(255, 255, 255, 0.16);
+  --tp-input-background-color-focus: rgba(255, 255, 255, 0.13);
+  --tp-input-background-color-hover: rgba(255, 255, 255, 0.1);
+  --tp-input-foreground-color: var(--text);
+  --tp-label-foreground-color: var(--text-dim);
+  --tp-monitor-background-color: rgba(0, 0, 0, 0.25);
+  --tp-monitor-foreground-color: var(--accent);
+  --tp-button-background-color: rgba(127, 214, 255, 0.16);
+  --tp-button-background-color-active: rgba(127, 214, 255, 0.34);
+  --tp-button-background-color-focus: rgba(127, 214, 255, 0.26);
+  --tp-button-background-color-hover: rgba(127, 214, 255, 0.24);
+  --tp-button-foreground-color: var(--text);
+  --tp-blade-value-width: 176px;
+}
+
+.tp-host .tp-rotv {
+  font-family: inherit;
+}
+
+/* Photo balls */
+
+.photos {
+  margin: 4px 0 8px;
+  padding: 8px 4px 0;
+}
+
+.section-label {
+  color: var(--text-dim);
+  margin-bottom: 6px;
 }
 
 .family-tray {
-  position: fixed;
-  top: max(16px, env(safe-area-inset-top));
-  right: 16px;
   display: flex;
   gap: 8px;
   align-items: center;
 }
 
 .family-tray button {
-  font: inherit;
-  color: inherit;
   cursor: pointer;
   border: 0;
   padding: 0;
@@ -87,4 +292,89 @@ body {
 
 .family-tray.off .family-thumb {
   opacity: 0.35;
+}
+
+/* Shortcuts */
+
+.shortcuts {
+  padding: 4px;
+  color: var(--text-dim);
+}
+
+.shortcuts summary {
+  cursor: pointer;
+}
+
+.shortcuts dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  margin: 8px 0 0;
+}
+
+.shortcuts dt {
+  font-family: ui-monospace, 'Cascadia Code', Menlo, monospace;
+  color: var(--text);
+}
+
+.shortcuts dd {
+  margin: 0;
+}
+
+/* --- Phones / narrow windows: bottom sheet --------------------------------- */
+
+@media (max-width: 720px) {
+  .panel {
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    max-height: 62dvh;
+    border-radius: var(--radius) var(--radius) 0 0;
+    border-bottom: 0;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Bottom sheet: down to close, up to open. */
+  .panel-toggle::before {
+    transform: translateY(-2px) rotate(45deg);
+  }
+
+  .panel.collapsed .panel-toggle::before {
+    transform: translateY(2px) rotate(-135deg);
+  }
+
+  .panel-head {
+    cursor: pointer;
+    padding-top: 14px;
+    position: relative;
+  }
+
+  /* Grab handle */
+  .panel-head::before {
+    content: '';
+    position: absolute;
+    top: 5px;
+    left: 50%;
+    width: 36px;
+    height: 4px;
+    margin-left: -18px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.25);
+  }
+
+  .picker {
+    display: flex;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .pick {
+    flex: 0 0 76px;
+  }
+
+  .tp-host {
+    --tp-blade-value-width: 60%;
+  }
 }

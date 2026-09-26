@@ -71,13 +71,24 @@ export class ParticleSystem {
     this.reseed();
   }
 
-  /** Change parameters live. Particles keep flowing; only the reference data is refreshed. */
-  setParams(params: readonly number[]) {
+  /**
+   * Change parameters live. Particles keep flowing. Pass `reanalyze: false`
+   * while a slider is dragging or a preset is tweening, then call reanalyze()
+   * once at the end: the reference run costs a few milliseconds.
+   */
+  setParams(params: readonly number[], reanalyze = true) {
     this.params = [...params];
-    this.reanalyze();
+    if (reanalyze) this.reanalyze();
   }
 
+  /**
+   * Resize the particle and trail buffers. Existing particles keep their
+   * positions (only their trails restart), so changing the count or trail
+   * length doesn't visibly reset the simulation.
+   */
   configure(count: number, trailLength: number) {
+    const oldPos = this.pos;
+    const oldCount = this.count;
     this.count = Math.max(1, Math.floor(count));
     this.trailLength = Math.max(2, Math.floor(trailLength));
     const verts = this.count * this.trailLength;
@@ -86,7 +97,7 @@ export class ParticleSystem {
     this.speed = new Float32Array(verts);
     this.index = new Uint32Array(verts * 2);
     this.version++;
-    this.reseed();
+    this.reseed(Math.min(oldCount, this.count), oldPos);
   }
 
   reanalyze() {
@@ -95,8 +106,31 @@ export class ParticleSystem {
     this.zRange = [...this.analysis.zRange];
   }
 
-  reseed() {
-    for (let i = 0; i < this.count; i++) this.spawn(i);
+  /**
+   * Respawn particles further than `radii` attractor radii from its center.
+   * Used after a parameter change so stragglers from the previous shape (or
+   * from a divergent setting) don't take ages to find their way back.
+   */
+  respawnOutliers(radii: number) {
+    const [cx, cy, cz] = this.analysis.center;
+    const limit2 = (radii * this.analysis.radius) ** 2;
+    let any = false;
+    for (let i = 0; i < this.count; i++) {
+      const x = this.pos[3 * i]!, y = this.pos[3 * i + 1]!, z = this.pos[3 * i + 2]!;
+      if (!((x - cx) ** 2 + (y - cy) ** 2 + (z - cz) ** 2 < limit2)) {
+        this.spawn(i);
+        any = true;
+      }
+    }
+    if (any) this.fullDirty = true;
+  }
+
+  /** Place particles on the attractor; the first `keep` take their positions from `from` instead. */
+  reseed(keep = 0, from?: Float32Array) {
+    for (let i = 0; i < this.count; i++) {
+      if (i < keep && from) this.placeAt(i, from[3 * i]!, from[3 * i + 1]!, from[3 * i + 2]!);
+      else this.spawn(i);
+    }
     this.head = 0;
     this.accumulator = 0;
     for (let k = 0; k < this.trailLength; k++) this.setSegment(k, k === 0);
@@ -154,7 +188,15 @@ export class ParticleSystem {
     const n = samples.length / 3;
     const j = 3 * Math.floor(Math.random() * n);
     const jitter = radius * 0.004;
-    for (let k = 0; k < 3; k++) this.pos[3 * i + k] = samples[j + k]! + (Math.random() - 0.5) * jitter;
+    const r = () => (Math.random() - 0.5) * jitter;
+    this.placeAt(i, samples[j]! + r(), samples[j + 1]! + r(), samples[j + 2]! + r());
+  }
+
+  /** Put particle i at a point and collapse its whole trail onto it. */
+  private placeAt(i: number, x: number, y: number, z: number) {
+    this.pos[3 * i] = x;
+    this.pos[3 * i + 1] = y;
+    this.pos[3 * i + 2] = z;
     for (let s = 0; s < this.trailLength; s++) {
       const v = s * this.count + i;
       this.trail[3 * v] = this.pos[3 * i]!;

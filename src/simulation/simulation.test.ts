@@ -44,6 +44,32 @@ describe('ParticleSystem trail ring buffer', () => {
     expect(Array.from(sys.trail.subarray(N * 3, 2 * N * 3))).toEqual(Array.from(sys.pos));
   });
 
+  it('keeps existing particle positions when resized', () => {
+    const sys = make();
+    sys.advance(sys.dt * 10);
+    const before = Array.from(sys.pos);
+    sys.configure(N + 3, L * 2);
+    expect(Array.from(sys.pos.subarray(0, N * 3))).toEqual(before);
+    // The new particle's trail is collapsed onto its position.
+    const p = N + 2;
+    for (let s = 0; s < sys.trailLength; s++) {
+      const v = 3 * (s * sys.count + p);
+      expect(Array.from(sys.trail.subarray(v, v + 3))).toEqual(Array.from(sys.pos.subarray(3 * p, 3 * p + 3)));
+    }
+  });
+
+  it('respawns only particles far from the attractor', () => {
+    const sys = make();
+    const [cx, cy, cz] = sys.analysis.center;
+    sys.pos.set([cx + 1000, cy, cz], 0);
+    const kept = Array.from(sys.pos.subarray(3, 6));
+    sys.fullDirty = false;
+    sys.respawnOutliers(3);
+    expect(Math.abs(sys.pos[0]! - cx)).toBeLessThan(3 * sys.analysis.radius);
+    expect(Array.from(sys.pos.subarray(3, 6))).toEqual(kept);
+    expect(sys.fullDirty).toBe(true);
+  });
+
   it('does not write a slot when less than one step of time has accumulated', () => {
     const sys = make();
     sys.advance(sys.dt * 0.4);

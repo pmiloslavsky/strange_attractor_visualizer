@@ -72,6 +72,7 @@ export const headVertex = /* glsl */ `
   uniform float uSize;
   uniform float uProjScale;
   uniform float uFade;
+  uniform float uHeadOpacity;
   varying vec3 vColor;
   varying float vAlpha;
 
@@ -82,7 +83,7 @@ export const headVertex = /* glsl */ `
     // floor so distant particles stay visible as glints.
     gl_PointSize = max(uSize * uProjScale / -mv.z, 2.0);
     vColor = paletteColor(0.0);
-    vAlpha = uFade;
+    vAlpha = uFade * uHeadOpacity;
   }
 `;
 

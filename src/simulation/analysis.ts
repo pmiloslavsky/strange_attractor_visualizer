@@ -8,6 +8,8 @@ import type { Attractor, Vec3 } from '../attractors';
 export interface Analysis {
   /** False if every attempt escaped to infinity; the rest is then a fallback. */
   readonly ok: boolean;
+  /** Every bounded attempt settled onto a fixed point instead of an attractor. */
+  readonly collapsed: boolean;
   /** Points on the attractor, packed xyz. */
   readonly samples: Float32Array;
   readonly center: Vec3;
@@ -67,12 +69,13 @@ export function analyze(a: Attractor, p: readonly number[], dt: number): Analysi
     if (result.radius > COLLAPSED * scale) return result;
     if (!best || result.radius > best.radius) best = result;
   }
-  if (best) return best;
+  if (best) return { ...best, collapsed: true };
 
   // Nothing bounded found (e.g. parameters dragged into a divergent regime).
   const samples = new Float32Array(SAMPLES * 3).map(() => lo + Math.random() * (hi - lo));
   return {
     ok: false,
+    collapsed: false,
     samples,
     center: [0, 0, 0],
     radius: Math.max(Math.abs(lo), Math.abs(hi)) * Math.sqrt(3),
@@ -101,6 +104,7 @@ function summarize(samples: Float32Array, speeds: Float32Array): Analysis {
   const speedHi = Math.max(percentile(sortedSpeeds, 0.95), speedLo + 1e-6);
   return {
     ok: true,
+    collapsed: false,
     samples,
     center,
     radius,

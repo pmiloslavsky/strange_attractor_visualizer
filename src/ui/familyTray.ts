@@ -26,11 +26,15 @@ function writeStored(i: number, value: string | null) {
 }
 
 /**
- * Three round thumbnails (top right). Click one to replace that ball's photo
- * with an image from disk; the ↺ button restores the originals; the eye
- * toggles the balls (same as the F key).
+ * Three round thumbnails. Click one to replace that ball's photo with an image
+ * from disk; the ↺ button restores the originals; the eye toggles the balls
+ * (same as the F key) through `setVisible`.
  */
-export function createFamilyTray(family: FamilyView, parent: HTMLElement) {
+export function createFamilyTray(
+  family: FamilyView,
+  parent: HTMLElement,
+  setVisible: (visible: boolean) => void,
+) {
   const tray = document.createElement('div');
   tray.className = 'family-tray';
   const input = document.createElement('input');
@@ -87,7 +91,7 @@ export function createFamilyTray(family: FamilyView, parent: HTMLElement) {
     tray.classList.toggle('off', !family.visible);
   };
   eye.addEventListener('click', () => {
-    family.visible = !family.visible;
+    setVisible(!family.visible);
     syncEye();
   });
 
@@ -108,7 +112,7 @@ export function createFamilyTray(family: FamilyView, parent: HTMLElement) {
 
   return {
     element: tray,
-    /** Call after family.visible changes elsewhere (e.g. keyboard). */
+    /** Call after family.visible changes elsewhere (keyboard, panel). */
     refresh: syncEye,
   };
 }
