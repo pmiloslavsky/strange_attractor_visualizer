@@ -473,6 +473,10 @@ button {
   opacity: 0.35;
 }
 
+.jet-btn.off {
+  opacity: 0.35;
+}
+
 /* Shortcuts */
 
 .shortcuts {

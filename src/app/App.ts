@@ -9,6 +9,7 @@ import { LyapunovMeter } from '../simulation/lyapunov';
 import { PoincareSection } from '../simulation/poincare';
 import { SectionView } from '../scene/SectionView';
 import { AxesView } from '../scene/AxesView';
+import { JetView } from '../scene/JetView';
 import { ParticleSystem, type SeedMode } from '../simulation/ParticleSystem';
 import type { ColorMode } from '../scene/shaders';
 
@@ -36,6 +37,8 @@ const VIEW_DIR = new THREE.Vector3(1, 0.45, 1.2).normalize();
  * is up on screen (model +y), and auto-rotate then spins the image in place.
  */
 const MAP_VIEW_DIR = new THREE.Vector3(0, 1, 0.02).normalize();
+/** The jet rides the particle after the three photo balls (0–2). */
+export const JET_PARTICLE = 3;
 /** Minimum particle count for the basin demo, so the pattern reads clearly. */
 const BASIN_PARTICLES = 4000;
 
@@ -57,6 +60,8 @@ export class App {
   private readonly sectionView: SectionView;
   /** The original's x/y/z reference axes (off by default). */
   private readonly axes = new AxesView();
+  /** A jet with afterburners flying along particle JET_PARTICLE (flows only). */
+  private readonly jet = new JetView();
   private sectionEnabled = false;
   private sectionKey = '';
   private readonly tweens = new Tweens();
@@ -97,6 +102,9 @@ export class App {
     this.chaos = new LyapunovMeter(this.sys);
     this.sectionView = new SectionView(this.section);
     this.view.group.add(this.sectionView.group, this.axes.group);
+    this.stage.overlay.add(this.jet.body, this.jet.lights);
+    this.jet.setEnvironment(this.stage.renderer, this.stage.overlay);
+    this.stage.scene.add(this.jet.flames);
     this.resetSection();
     this.view.setStyle({ particleSize: this.sys.attractor.particleSize });
     this.stage.scene.add(this.view.group);
@@ -320,7 +328,7 @@ export class App {
 
   // --- Ride along --------------------------------------------------------------
 
-  /** Index of the particle (0–2, the photo balls) the camera is riding with, or null. */
+  /** Index of the particle the camera is riding with (0–2 photo balls, 3 the jet), or null. */
   ride: number | null = null;
   private rideLook = new THREE.Vector3();
   private rideAutoRotate = false;
@@ -457,6 +465,39 @@ export class App {
     this.emit();
   }
 
+  get jetVisible(): boolean {
+    return this.jet.visible;
+  }
+
+  setJetVisible(on: boolean) {
+    this.jet.visible = on;
+    this.emit();
+  }
+
+  /** Fly the jet along its particle, nose along the flow direction from the equations. */
+  private syncJet(realDt: number) {
+    const i = JET_PARTICLE;
+    const { pos, params, attractor, count } = this.sys;
+    const show = attractor.kind === 'flow' && count > i;
+    const d: [number, number, number] = [0, 0, 0];
+    if (show) attractor.derivative(pos[3 * i]!, pos[3 * i + 1]!, pos[3 * i + 2]!, params, d);
+    // Throttle: the jet's speed within this attractor's typical range (same scale as speed coloring).
+    const [lo, hi] = this.sys.speedRange;
+    const throttle = (Math.hypot(...d) - lo) / (hi - lo || 1);
+    this.jet.sync({
+      throttle,
+      show,
+      worldPos: this.view.modelToWorld(show ? [pos[3 * i]!, pos[3 * i + 1]!, pos[3 * i + 2]!] : [0, 0, 0]),
+      worldDir: new THREE.Vector3(...d).applyQuaternion(this.view.group.quaternion),
+      radius: this.sys.analysis.radius,
+      camera: this.stage.camera,
+      projScale: this.view.projScale,
+      fade: this.view.fade,
+      realDt,
+      small: this.ride === i,
+    });
+  }
+
   get axesVisible(): boolean {
     return this.axes.visible;
   }
@@ -562,6 +603,7 @@ export class App {
       this.axes.sync(this.sys.analysis, this.attractor.kind === 'map');
       this.updateRide(realDt);
       this.family.sync(this.view.fade, this.stage.camera, this.view.projScale, this.ride);
+      this.syncJet(realDt);
       this.stage.render();
     });
   }

@@ -14,9 +14,10 @@ const SHORTCUTS = [
   ['[ ]', 'Fewer / more particles'],
   ['- =', 'Shorter / longer trails'],
   ['B', 'Butterfly effect: reseed as one tiny cluster'],
-  ['V', 'Ride along with a photo ball (Esc to stop)'],
+  ['V', 'Ride along with a photo ball or the A-10 (Esc to stop)'],
   ['A', 'x/y/z axes on/off'],
   ['F', 'Photo balls on/off'],
+  ['J', 'A-10 Warthog on/off'],
   ['S', 'Save screenshot'],
   ['Space', 'Pause'],
   ['H', 'Hide all controls'],
@@ -46,7 +47,9 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === 'f') app.setFamilyVisible(!app.family.visible);
   else if (e.key === 'b') app.reseed('cluster');
   else if (e.key === 'a') app.setAxesVisible(!app.axesVisible);
-  else if (e.key === 'v') app.ride === null ? app.startRide(0) : app.startRide((app.ride + 1) % 3);
+  else if (e.key === 'j') app.setJetVisible(!app.jetVisible);
+  // V cycles the ride through the three photo balls and the jet.
+  else if (e.key === 'v') app.startRide(app.ride === null ? 0 : (app.ride + 1) % 4);
   else if (e.key === 'Escape' && app.ride !== null) app.stopRide();
   else if (e.key === 's') void app.saveScreenshot();
   else if (e.key === '[' || e.key === ']') app.setCount(sys.count * (e.key === ']' ? 1.5 : 1 / 1.5));

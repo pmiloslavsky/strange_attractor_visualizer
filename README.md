@@ -107,7 +107,7 @@ The control panel (a side panel on desktop, a pull-up sheet on phones) has:
 - **Glow**: bloom strength, radius and threshold.
 - **Camera**: auto-rotate and its speed, auto-framing when parameters resize
   the attractor, x/y/z axes, a button to re-frame, and "ride with" a photo
-  ball.
+  ball or the A-10.
 - **Capture**: save a PNG screenshot.
 
 Keyboard:
@@ -120,10 +120,11 @@ Keyboard:
 | `[` `]` | Fewer / more particles |
 | `-` `=` | Shorter / longer trails |
 | B | Butterfly effect: restart as one tiny cluster |
-| V | Ride along with a photo ball (again: next ball) |
+| V | Ride along with a photo ball or the A-10 (again: next one) |
 | Esc | Stop riding |
 | A | Show / hide the x/y/z axes |
 | F | Show / hide the photo balls |
+| J | Show / hide the A-10 Warthog |
 | S | Save a PNG screenshot |
 | Space | Pause |
 | H | Hide the on-screen UI |
@@ -136,6 +137,12 @@ to replace that photo with an image from your computer. Your choice is
 remembered in this browser only and never uploaded. ↺ restores the original
 photos, and ◉ (or F) hides the balls. They only appear on the flows: on a map,
 points jump across the plane every iteration.
+
+A fourth rider, an **A-10 Warthog** in dark charcoal, flies along its own
+particle. It stays upright, banks into turns, and its engine exhaust grows
+brighter and longer the faster the flow is moving. (The real A-10 has no
+afterburners; these are for show.) ✈ (or J) toggles it, and "ride with → A-10"
+(or V) puts the camera behind it.
 
 ## Develop
 

@@ -1,6 +1,6 @@
 import { Pane, type BladeApi, type ListInputBindingApi, type SliderInputBindingApi } from 'tweakpane';
 import { ATTRACTORS, CONTROL_RANGES, type Attractor } from '../attractors';
-import { LIMITS, type App, type IntegratorName } from '../app/App';
+import { JET_PARTICLE, LIMITS, type App, type IntegratorName } from '../app/App';
 import { PALETTE_NAMES, type PaletteName } from '../scene/palettes';
 import { COLOR_MODES, type ColorMode } from '../scene/shaders';
 import { DEFAULT_FAMILY } from '../scene/FamilyView';
@@ -46,6 +46,7 @@ export class Panel {
   private readonly equations = el('div', 'equations');
   private readonly status = el('div', 'status');
   private readonly meter = el('div', 'meter');
+  private readonly jetButton = el('button', 'family-btn jet-btn');
   private readonly paramHost = el('div', 'tp-host');
   private readonly mainHost = el('div', 'tp-host');
   private paramPane?: Pane;
@@ -100,8 +101,12 @@ export class Panel {
     const body = el('div', 'panel-body');
     this.buildPicker();
     const photos = el('section', 'photos');
-    photos.append(el('div', 'section-label', 'Photo balls'));
+    photos.append(el('div', 'section-label', 'Photo balls & A-10'));
     this.tray = createFamilyTray(app.family, photos, (v) => app.setFamilyVisible(v));
+    this.jetButton.textContent = '✈';
+    this.jetButton.title = 'Show / hide the A-10 Warthog (J)';
+    this.jetButton.addEventListener('click', () => app.setJetVisible(!app.jetVisible));
+    this.tray.element.append(this.jetButton);
 
     const help = el('details', 'shortcuts');
     help.append(el('summary', undefined, 'Keyboard shortcuts'));
@@ -281,6 +286,7 @@ export class Panel {
     // Chase camera behind one of the photo-ball particles.
     const rideOptions: Record<string, number> = { off: -1 };
     DEFAULT_FAMILY.forEach((m, i) => (rideOptions[m.name] = i));
+    rideOptions['A-10'] = JET_PARTICLE;
     this.flowOnly.push(
       cam
         .addBinding(state, 'ride', { label: 'ride with', options: rideOptions })
@@ -357,6 +363,7 @@ export class Panel {
 
     this.title.textContent = a.name;
     this.tray.refresh();
+    this.jetButton.classList.toggle('off', !app.jetVisible);
     this.sweep.refresh();
     this.poincare.refresh();
     const an = app.sys.analysis;
