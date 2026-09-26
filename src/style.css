@@ -286,6 +286,24 @@ button {
   font-family: inherit;
 }
 
+/*
+ * Native dropdown menus: options otherwise inherit the panel's light text but
+ * render on the browser's default light popup, which is nearly unreadable.
+ */
+.panel select {
+  color-scheme: dark;
+}
+
+.panel select option {
+  background: #1a1d29;
+  color: #e6e8ef;
+}
+
+.panel select option:checked {
+  background: #2c4a66;
+  color: #ffffff;
+}
+
 /* Parameter sweep & bifurcation diagram */
 
 .sweep {
