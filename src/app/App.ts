@@ -562,11 +562,22 @@ export class App {
   // --- Capture ---------------------------------------------------------------
 
   /** Download the current frame as a PNG (the original's S hotkey). */
+  /**
+   * e.g. "rossler-preset3-2026-09-27T10-15-00-000Z.png": the attractor, the
+   * preset number (1-based) only while the parameters exactly match a preset,
+   * and a timestamp so names never collide.
+   */
+  screenshotName(now = new Date()): string {
+    const preset = this.presetIndex();
+    const parts = [this.attractor.id, ...(preset >= 0 ? [`preset${preset + 1}`] : []), now.toISOString().replace(/[:.]/g, '-')];
+    return `${parts.join('-')}.png`;
+  }
+
   async saveScreenshot() {
     const blob = await this.stage.screenshot();
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `${this.attractor.id}-${new Date().toISOString().replace(/[:.]/g, '-')}.png`;
+    a.download = this.screenshotName();
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
