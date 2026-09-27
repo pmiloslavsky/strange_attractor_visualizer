@@ -12,7 +12,12 @@ export const threeScroll = defineAttractor({
     { name: 'e', min: -100, max: 100 },
     { name: 'f', min: -100, max: 100 },
   ],
-  examples: [[40.0, 55.0, 11.0 / 6.0, 0.16, 0.65, 20.0]],
+  examples: [
+    [40.0, 55.0, 11.0 / 6.0, 0.16, 0.65, 20.0],
+    [40.0, 55.0, 11.0 / 6.0, 0.16, 0.65, 16.0],
+    [40.0, 55.0, 11.0 / 6.0, 0.16, 0.65, 24.0],
+  ],
+  exampleNames: ['Default', 'Wilder (f = 16)', 'Periodic loop (f = 24)'],
   dt: 0.0001,
   particleSize: 2.03,
   seedRange: [-1, 1],

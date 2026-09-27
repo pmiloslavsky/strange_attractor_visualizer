@@ -12,7 +12,10 @@ export const rossler = defineAttractor({
   examples: [
     [0.2, 0.2, 5.7],
     [0.1, 0.1, 14.0],
+    [0.2, 0.2, 3.5],
+    [0.2, 0.2, 4.1],
   ],
+  exampleNames: ['Chaos (c = 5.7)', 'Wide chaos (original preset 2)', 'Two loops (c = 3.5)', 'Four loops (c = 4.1)'],
   // The original used dt = 0.01, but with Euler that step is coarse enough to
   // turn the chaotic c = 5.7 attractor into a periodic loop (the chaos meter
   // reads λ ≈ 0). At 0.002 it is chaotic, λ ≈ 0.06, near the true ≈ 0.071.

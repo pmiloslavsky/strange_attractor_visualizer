@@ -17,7 +17,9 @@ export const chua = defineAttractor({
     [15.6, 28, -1.143, -0.714], // double scroll
     [9, 14.286, -1.143, -0.714], // double scroll (other standard set)
     [8.5, 14.286, -1.143, -0.714], // single scroll: stays on one side
+    [8.2, 14.286, -1.143, -0.714], // periodic loop, before the single scroll turns chaotic
   ],
+  exampleNames: ['Double scroll', 'Double scroll (α = 9)', 'Single scroll (α = 8.5)', 'Periodic loop (α = 8.2)'],
   dt: 0.002,
   particleSize: 0.04,
   seedRange: [-1, 1],

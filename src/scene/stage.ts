@@ -61,6 +61,25 @@ export class Stage {
     if (b.threshold !== undefined) this.bloom.threshold = b.threshold;
   }
 
+  /** CSS pixels on the right covered by the control panel (0 when it isn't in the way). */
+  private rightInset = 0;
+
+  /**
+   * Keep the scene centered in the part of the window the panel doesn't
+   * cover, by shifting the projection center left by half the inset.
+   */
+  setRightInset(px: number) {
+    if (px === this.rightInset) return;
+    this.rightInset = px;
+    this.resize();
+  }
+
+  /** Aspect ratio of the uncovered part of the view, for framing. */
+  get visibleAspect(): number {
+    const w = Math.max(1, this.container.clientWidth - this.rightInset);
+    return w / Math.max(1, this.container.clientHeight);
+  }
+
   resize() {
     const w = Math.max(1, this.container.clientWidth);
     const h = Math.max(1, this.container.clientHeight);
@@ -70,6 +89,9 @@ export class Stage {
     this.composer.setPixelRatio(dpr);
     this.composer.setSize(w, h);
     this.camera.aspect = w / h;
+    // Offsetting the view window to the right moves the scene left on screen.
+    if (this.rightInset > 0 && this.rightInset < w) this.camera.setViewOffset(w, h, this.rightInset / 2, 0, w, h);
+    else this.camera.clearViewOffset();
     this.camera.updateProjectionMatrix();
     this.onResize?.(h * dpr);
   }

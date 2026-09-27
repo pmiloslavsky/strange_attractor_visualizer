@@ -14,6 +14,7 @@ export const lorenz = defineAttractor({
     [12.69, 0.13, 53.03],
     [95.03, 0.19, 82.7],
   ],
+  exampleNames: ['Classic butterfly', 'Original preset 2', 'Original preset 3'],
   dt: 0.003,
   particleSize: 0.33,
   seedRange: [-1, 1],

@@ -142,6 +142,7 @@ export class App {
       this.countBeforeBasins = undefined;
     }
     this.sys.setAttractor(a);
+    this.lastPreset = 0;
     this.view.setStyle({ particleSize: a.particleSize });
     this.resetSection();
     let glide: Promise<void>;
@@ -211,8 +212,27 @@ export class App {
     this.scheduleReanalyze();
   }
 
+  /** Index of the preset the current parameters match exactly, or −1 if customized. */
+  presetIndex(): number {
+    const p = this.sys.params;
+    return this.attractor.examples.findIndex((ex) => ex.every((v, i) => Math.abs(v - p[i]!) <= 1e-9 * (1 + Math.abs(v))));
+  }
+
+  /** Last preset applied, so "next" still advances after sliders were nudged. */
+  private lastPreset = 0;
+
+  /** Morph to the next preset of this system (wrapping round). */
+  nextPreset() {
+    const n = this.attractor.examples.length;
+    const current = this.presetIndex();
+    const next = ((current >= 0 ? current : this.lastPreset) + 1) % n;
+    void this.applyPreset(this.attractor.examples[next]!);
+  }
+
   /** Tween all parameters to a preset, so the attractor morphs instead of jumping. */
   async applyPreset(values: readonly number[], ms = 1200) {
+    const index = this.attractor.examples.indexOf(values as never);
+    if (index >= 0) this.lastPreset = index;
     this.sweep = null;
     const token = {};
     this.presetToken = token;
@@ -486,8 +506,11 @@ export class App {
   private frameDistance(radius: number): number {
     const cam = this.stage.camera;
     const vfov = THREE.MathUtils.degToRad(cam.fov) / 2;
-    const hfov = Math.atan(Math.tan(vfov) * cam.aspect);
-    return (radius / Math.sin(Math.min(vfov, hfov))) * 1.1;
+    // Fit the part of the view the panel doesn't cover.
+    const hfov = Math.atan(Math.tan(vfov) * this.stage.visibleAspect);
+    // `radius` is half the bounding box's diagonal, which overstates how big
+    // the attractor looks on screen; 0.8 fills the view without clipping.
+    return (radius / Math.sin(Math.min(vfov, hfov))) * 0.8;
   }
 
   /**

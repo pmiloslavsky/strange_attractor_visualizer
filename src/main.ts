@@ -9,6 +9,7 @@ const app = new App(document.getElementById('app')!);
 
 const SHORTCUTS = [
   [`1–${Math.min(9, ATTRACTORS.length)}`, 'Switch attractor'],
+  ['N', 'Next preset'],
   ['C / P', 'Next color mode / palette'],
   ['R', 'Auto-rotate on/off'],
   ['[ ]', 'Fewer / more particles'],
@@ -46,6 +47,7 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === 'h') panel.toggleHidden();
   else if (e.key === 'f') app.setFamilyVisible(!app.family.visible);
   else if (e.key === 'b') app.reseed('cluster');
+  else if (e.key === 'n') app.nextPreset();
   else if (e.key === 'a') app.setAxesVisible(!app.axesVisible);
   else if (e.key === 'j') app.setJetVisible(!app.jetVisible);
   // V cycles the ride through the three photo balls and the jet.

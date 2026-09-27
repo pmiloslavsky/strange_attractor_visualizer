@@ -46,7 +46,8 @@ export class FamilyView {
   readonly group = new THREE.Group();
   private readonly sprites: THREE.Sprite[];
   private readonly tmp = new THREE.Vector3();
-  visible = true;
+  /** Off by default; the tray's eye button or F shows them. */
+  visible = false;
 
   constructor(private readonly sys: ParticleSystem) {
     this.group.rotation.x = -Math.PI / 2; // same model→world transform as AttractorView

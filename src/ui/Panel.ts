@@ -131,17 +131,35 @@ export class Panel {
     this.setCollapsed(matchMedia('(max-width: 720px)').matches);
     app.onChange(() => this.refresh());
     this.refresh();
+    // Keep the scene centered beside the panel as it opens, closes or the window resizes.
+    new ResizeObserver(() => this.updateInset()).observe(this.root);
+    window.addEventListener('resize', () => this.updateInset());
+    this.updateInset();
+    void app.frameCamera(0); // the first framing happened before the panel existed
+  }
+
+  /**
+   * Tell the stage how much of the right side the panel covers, so the scene
+   * is centered in the remaining space. On phones the panel is a bottom sheet,
+   * and when collapsed or hidden it covers almost nothing: no inset then.
+   */
+  private updateInset() {
+    const covers = !this.root.hidden && !this.root.classList.contains('collapsed') && !matchMedia('(max-width: 720px)').matches;
+    const inset = covers ? Math.max(0, window.innerWidth - this.root.getBoundingClientRect().left) : 0;
+    this.app.stage.setRightInset(Math.round(inset));
   }
 
   setCollapsed(collapsed: boolean) {
     this.root.classList.toggle('collapsed', collapsed);
     this.toggle.title = collapsed ? 'Expand controls' : 'Collapse controls';
     this.toggle.setAttribute('aria-label', this.toggle.title);
+    this.updateInset();
   }
 
   /** H key: hide every on-screen control, as in the original. */
   toggleHidden() {
     this.root.hidden = !this.root.hidden;
+    this.updateInset();
   }
 
   private buildPicker() {
@@ -166,7 +184,7 @@ export class Panel {
     const folder = pane.addFolder({ title: 'Parameters' });
 
     const presetOptions: Record<string, number> = { Custom: CUSTOM };
-    a.examples.forEach((_, i) => (presetOptions[i === 0 ? 'Example 1 (default)' : `Example ${i + 1}`] = i));
+    a.exampleNames.forEach((name, i) => (presetOptions[name] = i));
     folder
       .addBinding(this.state, 'preset', { label: 'preset', options: presetOptions })
       .on('change', (ev) => {
@@ -189,6 +207,9 @@ export class Panel {
           if (!this.syncing) this.app.setParam(i, ev.value);
         });
     });
+    if (a.examples.length > 1) {
+      folder.addButton({ title: 'Next preset ▶' }).on('click', () => this.app.nextPreset());
+    }
     folder.addButton({ title: 'Reset to defaults' }).on('click', () => this.app.resetSystem());
 
     this.paramPane = pane;
@@ -327,9 +348,8 @@ export class Panel {
 
     const p = app.sys.params;
     a.params.forEach((spec, i) => (this.params[spec.name] = p[i]!));
-    const match = a.examples.findIndex((ex) => ex.every((v, i) => Math.abs(v - p[i]!) <= 1e-9 * (1 + Math.abs(v))));
     Object.assign(state, {
-      preset: match,
+      preset: app.presetIndex(),
       dt: app.sys.dt,
       speed: app.speed,
       integrator: app.integrator,

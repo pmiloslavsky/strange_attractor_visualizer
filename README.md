@@ -90,10 +90,12 @@ The control panel (a side panel on desktop, a pull-up sheet on phones) has:
 - **Attractor picker**: thumbnails of all nine systems. Switching cross-fades
   and glides the camera to the new shape.
 - **Equations** of the current system, and the **chaos meter**.
-- **Parameters**: a slider per parameter, with the original's ranges, plus a
-  preset menu of the known interesting parameter sets. Picking a preset morphs
-  the attractor smoothly. The panel warns you when a setting diverges or
-  collapses to a fixed point.
+- **Parameters**: a slider per parameter, with the original's ranges, and up
+  to four named presets per system: the original program's example sets plus
+  settings chosen to look or behave differently (a stronger chaos, a lopsided
+  shape, period-doubled loops, order returning as a periodic loop). Picking a
+  preset, or pressing **Next preset ▶** (N), morphs the attractor smoothly.
+  The panel warns you when a setting diverges or collapses to a fixed point.
 - **Parameter sweep & bifurcation diagram** and **Poincaré section** (see
   above).
 - **Simulation**: dt, speed, integrator (the original's Euler or Runge-Kutta 4),
@@ -112,6 +114,7 @@ Keyboard:
 | Key | Action |
 | --- | --- |
 | 1–9 | Switch attractor |
+| N | Next preset |
 | C / P | Cycle color mode / palette |
 | R | Toggle auto-rotate |
 | `[` `]` | Fewer / more particles |
@@ -129,10 +132,10 @@ Keyboard:
 ### Photo balls
 
 As in the original, three photo-textured balls ride on the first three
-particles. The round thumbnails under "Photo balls" in the panel show them. Click one
-to replace that photo with an image from your computer. Your choice is
-remembered in this browser only and never uploaded. ↺ restores the original
-photos, and ◉ (or F) hides the balls.
+particles. They start hidden: ○ in the panel's "Photo balls & A-10" row (or F)
+shows them. The round thumbnails in that row show the photos. Click one to
+replace it with an image from your computer. Your choice is remembered in this
+browser only and never uploaded, and ↺ restores the original photos.
 
 A fourth rider, an **A-10 Warthog** in dark charcoal, flies along its own
 particle. It stays upright, banks into turns, and its engine exhaust grows

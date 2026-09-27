@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { analyze } from '../simulation/analysis';
 import { euler } from '../simulation/integrators';
 import { ATTRACTORS, eulerStep, getAttractor } from './index';
 
@@ -19,6 +20,9 @@ describe('attractor registry', () => {
   });
 
   it.each(ATTRACTORS.map((a) => [a.name, a] as const))('%s metadata is consistent', (_, a) => {
+    expect(a.examples.length).toBeGreaterThanOrEqual(1);
+    expect(a.examples.length).toBeLessThanOrEqual(4);
+    expect(a.exampleNames).toHaveLength(a.examples.length);
     for (const ex of a.examples) expect(ex).toHaveLength(a.params.length);
     for (const spec of a.params) expect(spec.min).toBeLessThan(spec.max);
     expect(a.dt).toBeGreaterThan(0);
@@ -34,6 +38,17 @@ describe('attractor registry', () => {
         expect(Number.isFinite(v)).toBe(true);
         expect(Math.abs(v)).toBeLessThan(1e4);
       }
+    },
+  );
+});
+
+describe('presets', () => {
+  it.each(ATTRACTORS.flatMap((a) => a.examples.map((ex, i) => [`${a.name}: ${a.exampleNames[i]}`, a, ex] as const)))(
+    '%s stays bounded and does not collapse',
+    (_, a, ex) => {
+      const r = analyze(a, ex, a.dt);
+      expect(r.ok).toBe(true);
+      expect(r.collapsed).toBe(false);
     },
   );
 });

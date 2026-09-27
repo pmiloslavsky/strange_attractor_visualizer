@@ -39,8 +39,10 @@ export interface AttractorDef<P extends readonly ParamSpec[] = readonly ParamSpe
   /** Human-readable system, one line per axis, for display in the UI. */
   readonly equations: readonly string[];
   readonly params: P;
-  /** Known interesting parameter sets. `examples[0]` is the default. */
+  /** Known interesting parameter sets (at most 4). `examples[0]` is the default. */
   readonly examples: readonly ParamValues<P>[];
+  /** A short name for each entry of `examples`, shown in the preset menu. */
+  readonly exampleNames: readonly string[];
   /** Default integration step (original `dt`). */
   readonly dt: number;
   /** Default particle size (original `particle_size`). */
