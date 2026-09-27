@@ -3,7 +3,7 @@ import { euler } from '../simulation/integrators';
 import { ATTRACTORS, eulerStep, getAttractor } from './index';
 
 describe('attractor registry', () => {
-  it('has the original 7 flows in order, then added flows, then the maps, with unique ids', () => {
+  it('has the original 7 systems in order, then the added ones, with unique ids', () => {
     expect(ATTRACTORS.map((a) => a.name)).toEqual([
       'Lorenz',
       'Chen-Lee',
@@ -14,10 +14,7 @@ describe('attractor registry', () => {
       'Dadras',
       'Chua',
       'Newton–Leipnik',
-      'Clifford',
-      'Peter de Jong',
     ]);
-    expect(ATTRACTORS.map((a) => a.kind)).toEqual([...Array(9).fill('flow'), 'map', 'map']);
     expect(new Set(ATTRACTORS.map((a) => a.id)).size).toBe(ATTRACTORS.length);
   });
 
@@ -39,25 +36,6 @@ describe('attractor registry', () => {
       }
     },
   );
-});
-
-describe('maps as Euler steps with dt = 1', () => {
-  it('one step of Clifford is exactly one map iteration', () => {
-    const [a, b, c, d] = [-1.4, 1.6, 1.0, 0.7];
-    const [x, y] = [0.3, -0.7];
-    const got = eulerStep(getAttractor('clifford'), x, y, 0, [a, b, c, d], 1);
-    expect(got[0]).toBeCloseTo(Math.sin(a * y) + c * Math.cos(a * x), 12);
-    expect(got[1]).toBeCloseTo(Math.sin(b * x) + d * Math.cos(b * y), 12);
-    expect(got[2]).toBe(0);
-  });
-
-  it('one step of de Jong is exactly one map iteration', () => {
-    const [a, b, c, d] = [1.4, -2.3, 2.4, -2.1];
-    const [x, y] = [0.3, -0.7];
-    const got = eulerStep(getAttractor('de-jong'), x, y, 0, [a, b, c, d], 1);
-    expect(got[0]).toBeCloseTo(Math.sin(a * y) - Math.cos(b * x), 12);
-    expect(got[1]).toBeCloseTo(Math.sin(c * x) - Math.cos(d * y), 12);
-  });
 });
 
 describe('eulerStep matches the original C++ apply_lorenz_de', () => {

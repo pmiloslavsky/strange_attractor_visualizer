@@ -85,9 +85,11 @@ export function createFamilyTray(
 
   const eye = document.createElement('button');
   eye.className = 'family-btn';
-  eye.title = 'Show / hide photo balls (F)';
   const syncEye = () => {
     eye.textContent = family.visible ? '◉' : '○';
+    // Say what a click will do, not both options.
+    eye.title = `${family.visible ? 'Hide' : 'Show'} the photo balls (F)`;
+    eye.setAttribute('aria-label', eye.title);
     tray.classList.toggle('off', !family.visible);
   };
   eye.addEventListener('click', () => {

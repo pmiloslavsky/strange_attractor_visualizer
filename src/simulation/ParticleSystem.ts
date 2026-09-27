@@ -61,13 +61,7 @@ export class ParticleSystem {
   analysis!: Analysis;
   /** Live robust ranges, eased toward the current distribution each frame. */
   speedRange: [number, number] = [0, 1];
-  /** Range along heightAxis (named for the flows' usual z-up). */
   zRange: [number, number] = [0, 1];
-
-  /** Model axis used for "height" coloring: z for flows, y for planar maps. */
-  get heightAxis(): 1 | 2 {
-    return this.attractor.kind === 'map' ? 1 : 2;
-  }
 
   /** Incremented when buffers are reallocated (the view must rebuild). */
   version = 0;
@@ -84,11 +78,6 @@ export class ParticleSystem {
     this.dt = attractor.dt;
     this.analysis = analyze(attractor, this.params, this.dt);
     this.configure(count, trailLength);
-  }
-
-  /** Integrator actually used: maps are an Euler step with dt = 1 by definition (see defineMap). */
-  get integrate(): Integrator {
-    return this.attractor.kind === 'map' ? euler : this.integrator;
   }
 
   /** Switch system: default parameters and dt, fresh particles on the new attractor. */
@@ -218,7 +207,7 @@ export class ParticleSystem {
     steps = Math.min(steps, Math.max(1, Math.floor(MAX_EVALS_PER_FRAME / count)));
     if (steps <= 0) return;
 
-    const integrate = this.integrate;
+    const integrate = this.integrator;
     for (let s = 0; s < steps; s++) integrate(this.attractor.derivative, pos, count, this.params, dt);
 
     const prevSlot = this.head;
@@ -276,7 +265,7 @@ export class ParticleSystem {
     const minSteps = Math.ceil(2 / this.dt), maxSteps = Math.ceil(100 / this.dt); // model time units
     const near2 = (0.1 * this.analysis.radius) ** 2;
     const p = new Float32Array([x, y, z]);
-    const integrate = this.integrate;
+    const integrate = this.integrator;
     let candidate = -1, streak = 0;
     for (let s = 1; s <= maxSteps; s++) {
       integrate(this.attractor.derivative, p, 1, this.params, this.dt);
@@ -371,7 +360,7 @@ export class ParticleSystem {
     for (let k = 0; k < n; k++) {
       const i = Math.floor(k * stride);
       s[k] = this.speed[base + i]!;
-      z[k] = this.pos[3 * i + this.heightAxis]!;
+      z[k] = this.pos[3 * i + 2]!;
     }
     s.sort();
     z.sort();

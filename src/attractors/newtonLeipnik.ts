@@ -19,7 +19,7 @@ export const newtonLeipnik = defineAttractor({
   dt: 0.002,
   particleSize: 0.006,
   seedRange: [-0.5, 0.5],
-  simSpeed: 2,
+  simSpeed: 1,
   derivative(x, y, z, [a, b], out) {
     out[0] = -a * x + y + 10 * y * z;
     out[1] = -x - 0.4 * y + 5 * x * z;

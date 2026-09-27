@@ -29,10 +29,16 @@ describe('bifurcation diagram', () => {
     expect(counts[3]).toBeGreaterThan(8);
   });
 
-  it('records x values for maps and marks divergence with an empty column', () => {
-    const a = getAttractor('clifford');
-    const cols = [...bifurcationColumns({ attractor: a, params: [...a.examples[0]!], param: 0, from: -1.4, to: -1.3, dt: 1, integrator: euler, start: [0.1, 0.1, 0], columns: 3 })];
-    expect(cols).toHaveLength(3);
-    for (const c of cols) expect(c.points.length).toBeGreaterThan(100);
+  it('records the resting z at a fixed point: Lorenz ρ = 10 settles at z = ρ − 1', () => {
+    const a = getAttractor('lorenz');
+    const [col] = bifurcationColumns({ attractor: a, params: [10, 8 / 3, 10], param: 2, from: 10, to: 10 + 1e-9, dt: a.dt, integrator: euler, start: [1, 1, 1], columns: 2 });
+    expect(col!.points).toHaveLength(1);
+    expect(col!.points[0]).toBeCloseTo(9, 3);
+  });
+
+  it('marks a diverging parameter value with an empty column', () => {
+    const a = getAttractor('thomas');
+    const [col] = bifurcationColumns({ attractor: a, params: [-0.5], param: 0, from: -0.5, to: -0.5 + 1e-9, dt: a.dt, integrator: euler, start: [0.1, 0.2, 0.3], columns: 2 });
+    expect(col!.points).toHaveLength(0);
   });
 });

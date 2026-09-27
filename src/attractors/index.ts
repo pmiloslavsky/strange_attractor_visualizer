@@ -1,9 +1,7 @@
 import { aizawa } from './aizawa';
 import { chenLee } from './chenLee';
 import { chua } from './chua';
-import { clifford } from './clifford';
 import { dadras } from './dadras';
-import { deJong } from './deJong';
 import { lorenz } from './lorenz';
 import { newtonLeipnik } from './newtonLeipnik';
 import { rossler } from './rossler';
@@ -15,7 +13,7 @@ export * from './types';
 
 /**
  * The original `vector<StrangeAttractorDE> DE` table, same order, then the
- * flows added in this port, then the 2D maps.
+ * systems added in this port.
  */
 export const ATTRACTORS: readonly Attractor[] = [
   lorenz,
@@ -27,8 +25,6 @@ export const ATTRACTORS: readonly Attractor[] = [
   dadras,
   chua,
   newtonLeipnik,
-  clifford,
-  deJong,
 ];
 
 export function getAttractor(id: string): Attractor {

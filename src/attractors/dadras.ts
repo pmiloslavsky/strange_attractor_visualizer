@@ -18,7 +18,7 @@ export const dadras = defineAttractor({
   dt: 0.001,
   particleSize: 0.03,
   seedRange: [-1, 1],
-  simSpeed: 1.2,
+  simSpeed: 0.6,
   derivative(x, y, z, [a, b, c, d, e], out) {
     out[0] = y - a * x + b * y * z;
     out[1] = c * y - x * z + z;

@@ -19,7 +19,6 @@ const common = /* glsl */ `
   uniform int uColorMode;
   uniform vec2 uSpeedRange;
   uniform vec2 uZRange;
-  uniform vec3 uHeightAxis;
   uniform float uCycle;
 
   attribute float speed;
@@ -41,7 +40,7 @@ const common = /* glsl */ `
     } else if (uColorMode == 1) {
       t = 1.0 - age / uTrailLength;
     } else if (uColorMode == 2) {
-      t = (dot(position, uHeightAxis) - uZRange.x) / (uZRange.y - uZRange.x);
+      t = (position.z - uZRange.x) / (uZRange.y - uZRange.x);
     } else if (uColorMode == 3) {
       t = fract(float(vertexParticle()) * 0.61803398875);
     } else {
@@ -79,7 +78,6 @@ export const headVertex = /* glsl */ `
   ${common}
   uniform float uSize;
   uniform float uProjScale;
-  uniform float uMinPointPx;
   uniform float uFade;
   uniform float uHeadOpacity;
   varying vec3 vColor;
@@ -90,7 +88,7 @@ export const headVertex = /* glsl */ `
     gl_Position = projectionMatrix * mv;
     // uSize is a world-space diameter (the original's particle_size); keep a
     // floor so distant particles stay visible as glints.
-    gl_PointSize = max(uSize * uProjScale / -mv.z, uMinPointPx);
+    gl_PointSize = max(uSize * uProjScale / -mv.z, 2.0);
     vColor = paletteColor(0.0);
     vAlpha = uFade * uHeadOpacity;
   }

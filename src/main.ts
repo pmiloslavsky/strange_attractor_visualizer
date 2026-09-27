@@ -8,7 +8,7 @@ import './style.css';
 const app = new App(document.getElementById('app')!);
 
 const SHORTCUTS = [
-  [`1–${Math.min(9, ATTRACTORS.length)}`, 'Switch attractor (first nine)'],
+  [`1–${Math.min(9, ATTRACTORS.length)}`, 'Switch attractor'],
   ['C / P', 'Next color mode / palette'],
   ['R', 'Auto-rotate on/off'],
   ['[ ]', 'Fewer / more particles'],

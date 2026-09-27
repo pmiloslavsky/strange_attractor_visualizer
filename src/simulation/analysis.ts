@@ -16,7 +16,7 @@ export interface Analysis {
   readonly radius: number;
   /** Robust (1st–99th percentile) extent along x, y and z. */
   readonly ranges: readonly [number, number][];
-  /** Robust (percentile) range along the height axis (z for flows, y for maps), for height coloring. */
+  /** Robust (percentile) range of model-space z, for height coloring. */
   readonly zRange: [number, number];
   /** Robust range of |d(x,y,z)/dt|, for speed coloring. */
   readonly speedRange: [number, number];
@@ -65,8 +65,7 @@ const isCollapsed = (r: Analysis) => r.radius <= COLLAPSED * (1 + Math.hypot(...
 
 export function analyze(a: Attractor, p: readonly number[], dt: number): Analysis {
   const [lo, hi] = a.seedRange;
-  const heightAxis = a.kind === 'map' ? 1 : 2;
-  const multi = a.basins && analyzeBasins(a, p, dt, heightAxis);
+  const multi = a.basins && analyzeBasins(a, p, dt);
   if (multi) return multi;
 
   // Some systems also have stable fixed points (Aizawa has one near
@@ -77,7 +76,7 @@ export function analyze(a: Attractor, p: readonly number[], dt: number): Analysi
     const start: Vec3 = [0, 0, 0].map(() => lo + Math.random() * (hi - lo)) as Vec3;
     const traj = run(a, p, dt, start);
     if (!traj) continue;
-    const result = summarize(traj.samples, traj.speeds, heightAxis);
+    const result = summarize(traj.samples, traj.speeds);
     if (!isCollapsed(result)) return result;
     if (!best || result.radius > best.radius) best = result;
   }
@@ -139,7 +138,7 @@ function medianGap(a: Float32Array, b: Float32Array, skipSelf: boolean): number 
  * end up on the same attractor, as happens when parameters or a coarse dt
  * merge them.
  */
-function analyzeBasins(a: Attractor, p: readonly number[], dt: number, heightAxis: number): Analysis | null {
+function analyzeBasins(a: Attractor, p: readonly number[], dt: number): Analysis | null {
   const trajs = a.basins!.seeds.map((seed) => run(a, p, dt, seed));
   if (trajs.some((t) => !t)) return null;
   const probes = trajs.map((t) => subsample(t!.samples, PROBES));
@@ -160,7 +159,7 @@ function analyzeBasins(a: Attractor, p: readonly number[], dt: number, heightAxi
     sampleBasin.fill(k, offset, offset + t!.speeds.length);
     offset += t!.speeds.length;
   });
-  const result = summarize(samples, speeds, heightAxis);
+  const result = summarize(samples, speeds);
   if (isCollapsed(result)) return null;
   return { ...result, basins: { sampleBasin, probes } };
 }
@@ -176,7 +175,7 @@ function axisRange(samples: Float32Array, axis: number, q: number): [number, num
   return [percentile(v, q), percentile(v, 1 - q)];
 }
 
-function summarize(samples: Float32Array, speeds: Float32Array, heightAxis: number): Analysis {
+function summarize(samples: Float32Array, speeds: Float32Array): Analysis {
   const ranges = [0, 1, 2].map((axis) => axisRange(samples, axis, 0.01)) as [number, number][];
   const center = ranges.map(([a, b]) => (a + b) / 2) as Vec3;
   const radius = Math.max(0.5 * Math.hypot(...ranges.map(([a, b]) => b - a)), 1e-3);
@@ -190,7 +189,7 @@ function summarize(samples: Float32Array, speeds: Float32Array, heightAxis: numb
     center,
     radius,
     ranges,
-    zRange: axisRange(samples, heightAxis, 0.02),
+    zRange: axisRange(samples, 2, 0.02),
     speedRange: [speedLo, speedHi],
   };
 }

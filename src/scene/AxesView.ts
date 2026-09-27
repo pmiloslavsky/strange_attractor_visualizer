@@ -59,11 +59,9 @@ export class AxesView {
     return this.group.visible;
   }
 
-  /** Resize to the current attractor; `planar` hides z (maps live in the z = 0 plane). */
-  sync(analysis: Analysis, planar: boolean) {
-    if (!this.group.visible) return;
-    this.lines[2]!.visible = this.labels[2]!.visible = !planar;
-    if (analysis === this.shownFor) return;
+  /** Resize to the current attractor. */
+  sync(analysis: Analysis) {
+    if (!this.group.visible || analysis === this.shownFor) return;
     this.shownFor = analysis;
     const r = analysis.radius;
     AXES.forEach((a, k) => {

@@ -62,7 +62,6 @@ export class PoincarePanel {
   /** Call on every app change. */
   refresh() {
     const a = this.app.attractor;
-    this.root.hidden = a.kind === 'map';
     // New system, or new parameters that changed the attractor's extent.
     if (a !== this.builtFor || this.app.sys.analysis !== this.builtAnalysis) {
       this.builtFor = a;

@@ -45,10 +45,4 @@ describe('LyapunovMeter', () => {
   it('Rössler at c = 2.5 is a periodic loop', () => {
     expect(measure('rossler', [0.2, 0.2, 2.5]).verdict).toBe('periodic');
   });
-
-  it('works per iteration for maps (Clifford is chaotic)', () => {
-    const r = measure('clifford', undefined, 300);
-    expect(r.verdict).toBe('chaotic');
-    expect(r.unit).toBe('iteration');
-  });
 });

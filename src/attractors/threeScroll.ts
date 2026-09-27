@@ -16,7 +16,7 @@ export const threeScroll = defineAttractor({
   dt: 0.0001,
   particleSize: 2.03,
   seedRange: [-1, 1],
-  simSpeed: 0.15,
+  simSpeed: 0.075,
   derivative(x, y, z, [a, b, c, d, e, f], out) {
     out[0] = a * (y - x) + d * x * z;
     out[1] = b * x - x * z + f * y;

@@ -21,7 +21,7 @@ export const chua = defineAttractor({
   dt: 0.002,
   particleSize: 0.04,
   seedRange: [-1, 1],
-  simSpeed: 2,
+  simSpeed: 1,
   derivative(x, y, z, [alpha, beta, m0, m1], out) {
     const fx = m1 * x + 0.5 * (m0 - m1) * (Math.abs(x + 1) - Math.abs(x - 1));
     out[0] = alpha * (y - x - fx);

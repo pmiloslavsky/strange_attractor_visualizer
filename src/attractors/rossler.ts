@@ -19,7 +19,7 @@ export const rossler = defineAttractor({
   dt: 0.002,
   particleSize: 0.33,
   seedRange: [-1, 1],
-  simSpeed: 3,
+  simSpeed: 1.5,
   // The textbook period-doubling route: one loop, two, four, … then chaos.
   sweep: { param: 2, from: 2, to: 12 },
   // The classic section y = 0: one dot per loop.

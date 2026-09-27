@@ -1,4 +1,4 @@
-import { Pane, type BladeApi, type ListInputBindingApi, type SliderInputBindingApi } from 'tweakpane';
+import { Pane, type BladeApi, type ListInputBindingApi } from 'tweakpane';
 import { ATTRACTORS, CONTROL_RANGES, type Attractor } from '../attractors';
 import { JET_PARTICLE, LIMITS, type App, type IntegratorName } from '../app/App';
 import { PALETTE_NAMES, type PaletteName } from '../scene/palettes';
@@ -47,15 +47,14 @@ export class Panel {
   private readonly status = el('div', 'status');
   private readonly meter = el('div', 'meter');
   private readonly jetButton = el('button', 'family-btn jet-btn');
+  private toggle!: HTMLButtonElement;
   private readonly paramHost = el('div', 'tp-host');
   private readonly mainHost = el('div', 'tp-host');
   private paramPane?: Pane;
   private readonly mainPane: Pane;
   private builtFor?: Attractor;
   private syncing = false;
-  private particlesSlider!: SliderInputBindingApi;
   private colorModeList!: ListInputBindingApi<ColorMode>;
-  private flowOnly: BladeApi[] = [];
   /** Controls that only make sense for systems with several attractors. */
   private basinOnly: BladeApi[] = [];
   private basinsShown?: boolean;
@@ -90,7 +89,7 @@ export class Panel {
   ) {
     const head = el('header', 'panel-head');
     const toggle = el('button', 'panel-toggle');
-    toggle.setAttribute('aria-label', 'Collapse or expand controls');
+    this.toggle = toggle;
     toggle.addEventListener('click', () => this.setCollapsed(!this.root.classList.contains('collapsed')));
     head.append(this.title, toggle);
     head.addEventListener('click', (e) => {
@@ -104,7 +103,6 @@ export class Panel {
     photos.append(el('div', 'section-label', 'Photo balls & A-10'));
     this.tray = createFamilyTray(app.family, photos, (v) => app.setFamilyVisible(v));
     this.jetButton.textContent = '✈';
-    this.jetButton.title = 'Show / hide the A-10 Warthog (J)';
     this.jetButton.addEventListener('click', () => app.setJetVisible(!app.jetVisible));
     this.tray.element.append(this.jetButton);
 
@@ -137,6 +135,8 @@ export class Panel {
 
   setCollapsed(collapsed: boolean) {
     this.root.classList.toggle('collapsed', collapsed);
+    this.toggle.title = collapsed ? 'Expand controls' : 'Collapse controls';
+    this.toggle.setAttribute('aria-label', this.toggle.title);
   }
 
   /** H key: hide every on-screen control, as in the original. */
@@ -152,7 +152,7 @@ export class Panel {
       const img = el('img');
       img.src = `thumbs/${a.id}.jpg`;
       img.alt = '';
-      b.append(img, el('span', undefined, a.name.replace('-Unified', '').replace('Peter ', '')));
+      b.append(img, el('span', undefined, a.name.replace('-Unified', '')));
       b.addEventListener('click', () => void this.app.switchTo(a));
       this.picker.append(b);
     }
@@ -193,10 +193,6 @@ export class Panel {
 
     this.paramPane = pane;
     this.builtFor = a;
-    for (const blade of this.flowOnly) blade.hidden = a.kind === 'map';
-    const limits = this.app.particleLimits;
-    this.particlesSlider.min = limits.min;
-    this.particlesSlider.max = limits.max;
     this.equations.innerHTML = a.equations.map((e) => `<div>${e}</div>`).join('');
     for (const b of this.picker.querySelectorAll<HTMLElement>('.pick')) {
       b.classList.toggle('active', b.dataset.id === a.id);
@@ -211,7 +207,7 @@ export class Panel {
     };
 
     const sim = pane.addFolder({ title: 'Simulation' });
-    const dt = sim
+    sim
       .addBinding(state, 'dt', {
         min: CONTROL_RANGES.dt.min,
         max: CONTROL_RANGES.dt.max,
@@ -222,22 +218,20 @@ export class Panel {
     sim
       .addBinding(state, 'speed', { ...LIMITS.speed, step: 0.05, format: (v: number) => `${v.toFixed(2)}×` })
       .on('change', guard((v: number) => (app.speed = v)));
-    const integrator = sim
+    sim
       .addBinding(state, 'integrator', { options: { 'Euler (original)': 'euler', 'Runge-Kutta 4': 'rk4' } })
       .on('change', guard((v: IntegratorName) => app.setIntegrator(v)));
     // Resizing reallocates buffers, so apply when the drag ends.
-    this.particlesSlider = sim
+    sim
       .addBinding(state, 'particles', { ...LIMITS.particles, step: 1, format: (v: number) => v.toFixed(0) })
       .on('change', (ev) => {
         if (!this.syncing && ev.last) app.setCount(ev.value);
-      }) as SliderInputBindingApi;
-    const trail = sim
+      });
+    sim
       .addBinding(state, 'trail', { ...LIMITS.trail, step: 1, format: (v: number) => v.toFixed(0) })
       .on('change', (ev) => {
         if (!this.syncing && ev.last) app.setTrail(ev.value);
       });
-    // Maps iterate with a fixed step of 1, only with Euler, and have no trails.
-    this.flowOnly = [dt, integrator, trail];
     sim
       .addBinding(state, 'particleSize', { label: 'size', ...LIMITS.particleSize, step: 0.01 })
       .on('change', guard((v: number) => app.setStyle({ particleSize: v })));
@@ -283,15 +277,13 @@ export class Panel {
       .on('change', guard((v: boolean) => (app.autoFrame = v)));
     cam.addBinding(state, 'axes', { label: 'x/y/z axes' }).on('change', guard((v: boolean) => app.setAxesVisible(v)));
     cam.addButton({ title: 'Frame attractor' }).on('click', () => void app.frameCamera(800));
-    // Chase camera behind one of the photo-ball particles.
+    // Chase camera behind one of the photo balls or the A-10.
     const rideOptions: Record<string, number> = { off: -1 };
     DEFAULT_FAMILY.forEach((m, i) => (rideOptions[m.name] = i));
     rideOptions['A-10'] = JET_PARTICLE;
-    this.flowOnly.push(
-      cam
-        .addBinding(state, 'ride', { label: 'ride with', options: rideOptions })
-        .on('change', guard((v: number) => (v < 0 ? app.stopRide() : app.startRide(v)))),
-    );
+    cam
+      .addBinding(state, 'ride', { label: 'ride with', options: rideOptions })
+      .on('change', guard((v: number) => (v < 0 ? app.stopRide() : app.startRide(v))));
 
     const capture = pane.addFolder({ title: 'Capture', expanded: false });
     capture.addButton({ title: 'Save screenshot (PNG)' }).on('click', () => void app.saveScreenshot());
@@ -305,11 +297,10 @@ export class Panel {
     if (r.verdict === 'measuring') detail = 'measuring…';
     else if (r.verdict === 'diverges') detail = 'trajectories fly off to infinity';
     else {
-      detail = `λ ≈ ${fmt(r.lambda)} ± ${fmt(r.error)} per ${r.unit}`;
+      detail = `λ ≈ ${fmt(r.lambda)} ± ${fmt(r.error)} per time unit`;
       if (r.verdict === 'chaotic') {
         const t = r.doubling;
-        const unit = r.unit === 'iteration' ? (t === 1 ? 'iteration' : 'iterations') : 'time units';
-        detail += `<br>nearby paths separate 2× every ${t >= 10 ? t.toFixed(0) : t.toFixed(1)} ${unit}`;
+        detail += `<br>nearby paths separate 2× every ${t >= 10 ? t.toFixed(0) : t.toFixed(1)} time units`;
       }
     }
     this.meter.innerHTML =
@@ -364,6 +355,9 @@ export class Panel {
     this.title.textContent = a.name;
     this.tray.refresh();
     this.jetButton.classList.toggle('off', !app.jetVisible);
+    // Say what a click will do, not both options.
+    this.jetButton.title = `${app.jetVisible ? 'Hide' : 'Show'} the A-10 Warthog (J)`;
+    this.jetButton.setAttribute('aria-label', this.jetButton.title);
     this.sweep.refresh();
     this.poincare.refresh();
     const an = app.sys.analysis;

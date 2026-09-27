@@ -20,7 +20,7 @@ export const aizawa = defineAttractor({
   dt: 0.01,
   particleSize: 0.03,
   seedRange: [-1, 1],
-  simSpeed: 1.5,
+  simSpeed: 0.75,
   derivative(x, y, z, [a, b, c, d, e, f], out) {
     out[0] = (z - b) * x - d * y;
     out[1] = d * x + (z - b) * y;

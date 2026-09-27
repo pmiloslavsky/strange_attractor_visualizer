@@ -162,7 +162,7 @@ export class SweepSection {
       from,
       to,
       dt: sys.dt,
-      integrator: sys.integrate,
+      integrator: sys.integrator,
       start: [s[0]!, s[1]!, s[2]!],
     });
     this.caption.textContent = 'Computing…';
@@ -193,9 +193,9 @@ export class SweepSection {
   private describe() {
     const a = this.app.attractor;
     const name = label(a.params[this.range.param]!.name);
-    this.caption.textContent = a.kind === 'map'
-      ? `x values the map visits, for each ${name}. Click to jump there.`
-      : `Peaks of z the orbit settles into, for each ${name}: one line = a simple loop, splits = period doubling, smear = chaos. Click to jump there.`;
+    this.caption.textContent =
+      `Peaks of z the orbit settles into, for each ${name}: one line = a simple loop, ` +
+      'splits = period doubling, smear = chaos. Click to jump there.';
   }
 
   private sizeCanvas(c: HTMLCanvasElement) {

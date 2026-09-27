@@ -14,14 +14,12 @@ export type ChaosVerdict = 'measuring' | 'chaotic' | 'periodic' | 'fixed point' 
 
 export interface ChaosReading {
   verdict: ChaosVerdict;
-  /** Largest Lyapunov exponent, per unit model time (flows) or per iteration (maps). */
+  /** Largest Lyapunov exponent, per unit of model time. */
   lambda: number;
   /** Standard error of `lambda`, from the spread of block estimates. */
   error: number;
-  /** Time (or iterations) for a small separation to double: ln 2 / λ, when chaotic. */
+  /** Model time for a small separation to double: ln 2 / λ, when chaotic. */
   doubling: number;
-  /** 'time unit' for flows, 'iteration' for maps. */
-  unit: string;
 }
 
 /**
@@ -59,11 +57,11 @@ export class LyapunovMeter {
   tick() {
     const sys = this.sys;
     const key = `${sys.attractor.id}|${sys.params.join(',')}|${sys.dt}`;
-    if (key !== this.key || sys.integrate !== this.integrator) this.reset(key);
+    if (key !== this.key || sys.integrator !== this.integrator) this.reset(key);
     if (this.diverged || !sys.analysis.ok) return;
 
     const f = sys.attractor.derivative;
-    const integrate = sys.integrate;
+    const integrate = sys.integrator;
     const { dt, params } = sys;
     const steps = Math.min(MAX_STEPS_PER_FRAME, Math.max(this.renormSteps, Math.ceil(2 / dt)));
     for (let s = 0; s < steps; s++) {
@@ -98,8 +96,7 @@ export class LyapunovMeter {
   }
 
   reading(): ChaosReading {
-    const unit = this.sys.attractor.kind === 'map' ? 'iteration' : 'time unit';
-    const base = { lambda: NaN, error: NaN, doubling: NaN, unit };
+    const base = { lambda: NaN, error: NaN, doubling: NaN };
     if (this.diverged || !this.sys.analysis.ok) return { ...base, verdict: 'diverges' };
     const n = this.blocks.length;
     if (n < MIN_BLOCKS || this.time === 0) return { ...base, verdict: 'measuring' };
@@ -111,13 +108,13 @@ export class LyapunovMeter {
     // since a periodic orbit's estimate only approaches 0 slowly (like 1/time).
     const margin = 2 * error + 0.002;
     const verdict: ChaosVerdict = lambda > margin ? 'chaotic' : lambda < -margin ? 'fixed point' : 'periodic';
-    return { verdict, lambda, error, doubling: lambda > 0 ? Math.LN2 / lambda : NaN, unit };
+    return { verdict, lambda, error, doubling: lambda > 0 ? Math.LN2 / lambda : NaN };
   }
 
   private reset(key: string) {
     const sys = this.sys;
     this.key = key;
-    this.integrator = sys.integrate;
+    this.integrator = sys.integrator;
     this.diverged = false;
     this.stepCount = this.renorms = 0;
     this.logSum = this.time = this.block = this.blockTime = 0;
@@ -127,10 +124,10 @@ export class LyapunovMeter {
     this.ref.set(samples.subarray(j, j + 3));
     this.d0 = radius * 1e-7;
     // Random direction; the flow quickly turns it toward the most unstable one.
-    const v = [Math.random() - 0.5, Math.random() - 0.5, sys.attractor.kind === 'map' ? 0 : Math.random() - 0.5];
+    const v = [Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5];
     const len = Math.hypot(...v) || 1;
     for (let k = 0; k < 3; k++) this.pert[k] = this.ref[k]! + (v[k]! / len) * this.d0;
-    // Renormalize about every half time unit for flows; every iteration for maps.
-    this.renormSteps = sys.attractor.kind === 'map' ? 1 : Math.max(1, Math.round(0.5 / sys.dt));
+    // Renormalize about every half time unit.
+    this.renormSteps = Math.max(1, Math.round(0.5 / sys.dt));
   }
 }

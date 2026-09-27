@@ -9,7 +9,7 @@ export const thomas = defineAttractor({
   dt: 0.01,
   particleSize: 0.03,
   seedRange: [-1, 1],
-  simSpeed: 4,
+  simSpeed: 2,
   // From the Hopf loop at b ≈ 0.329 down through period doubling into chaos.
   sweep: { param: 0, from: 0.1, to: 0.35 },
   derivative(x, y, z, [b], out) {

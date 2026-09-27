@@ -17,7 +17,7 @@ export const lorenz = defineAttractor({
   dt: 0.003,
   particleSize: 0.33,
   seedRange: [-1, 1],
-  simSpeed: 0.5,
+  simSpeed: 0.25,
   // ρ: fixed points below ≈ 24.7, then chaos with periodic windows.
   sweep: { param: 2, from: 10, to: 100 },
   // The plane z = ρ − 1 through the two off-center fixed points.

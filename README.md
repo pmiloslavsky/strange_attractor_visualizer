@@ -2,7 +2,7 @@
 
 **[▶ Open the live demo](https://pmiloslavsky.github.io/strange_attractor_visualizer/)**
 
-<img src="docs/screenshots/lorenz.jpg" alt="Lorenz attractor with glowing particle trails and three photo balls" width="100%">
+<img src="docs/screenshots/lorenz.jpg" alt="Lorenz attractor with glowing particle trails, three photo balls and an A-10 Warthog" width="100%">
 
 Real-time 3D strange attractors in the browser: thousands of particles with
 glowing, fading trails, palette coloring by speed / age / height, bloom, and
@@ -11,8 +11,8 @@ drag-to-orbit camera controls. A from-scratch web rebuild of the C++/SFML/TGUI
 demo, keeping its seven systems, their parameter tables, and its three photo
 balls riding along the flow. It adds Chua's circuit (the famous double
 scroll), the Newton–Leipnik system (two attractors at once, with particles
-colored by which one they reach), and two classic 2D chaotic maps, Clifford and
-Peter de Jong, drawn as clouds of hundreds of thousands of points.
+colored by which one they reach), and an A-10 Warthog flying with the
+particles.
 
 Static site, no backend. Vite + TypeScript + Three.js.
 
@@ -23,7 +23,6 @@ Static site, no backend. Vite + TypeScript + Three.js.
 | <img src="docs/screenshots/lorenz.jpg" width="260" alt="Lorenz"><br>**Lorenz** | <img src="docs/screenshots/chen-lee.jpg" width="260" alt="Chen-Lee"><br>**Chen–Lee** | <img src="docs/screenshots/rossler.jpg" width="260" alt="Rössler"><br>**Rössler** |
 | <img src="docs/screenshots/aizawa.jpg" width="260" alt="Aizawa"><br>**Aizawa** | <img src="docs/screenshots/three-scroll.jpg" width="260" alt="Three-Scroll Unified"><br>**Three-Scroll Unified** | <img src="docs/screenshots/thomas.jpg" width="260" alt="Thomas"><br>**Thomas** |
 | <img src="docs/screenshots/dadras.jpg" width="260" alt="Dadras"><br>**Dadras** | <img src="docs/screenshots/chua.jpg" width="260" alt="Chua's circuit"><br>**Chua's circuit** | <img src="docs/screenshots/newton-leipnik.jpg" width="260" alt="Newton-Leipnik"><br>**Newton–Leipnik** (two attractors) |
-| <img src="docs/screenshots/clifford.jpg" width="260" alt="Clifford"><br>**Clifford** (2D map) | <img src="docs/screenshots/de-jong.jpg" width="260" alt="Peter de Jong"><br>**Peter de Jong** (2D map) | |
 
 ### Which attractor will a starting point reach?
 
@@ -88,7 +87,7 @@ auto-rotates until you turn it off.
 
 The control panel (a side panel on desktop, a pull-up sheet on phones) has:
 
-- **Attractor picker**: thumbnails of all eleven systems. Switching cross-fades
+- **Attractor picker**: thumbnails of all nine systems. Switching cross-fades
   and glides the camera to the new shape.
 - **Equations** of the current system, and the **chaos meter**.
 - **Parameters**: a slider per parameter, with the original's ranges, plus a
@@ -98,10 +97,8 @@ The control panel (a side panel on desktop, a pull-up sheet on phones) has:
 - **Parameter sweep & bifurcation diagram** and **Poincaré section** (see
   above).
 - **Simulation**: dt, speed, integrator (the original's Euler or Runge-Kutta 4),
-  particle count (up to 8,000; 400,000 for maps), trail length, particle
-  size, pause, reseed, the butterfly-effect reseed, and "Seed basin slice" for
-  Newton–Leipnik. Maps always iterate one step at a time, so dt, integrator
-  and trails don't apply to them and are hidden.
+  particle count (up to 8,000), trail length, particle size, pause, reseed,
+  the butterfly-effect reseed, and "Seed basin slice" for Newton–Leipnik.
 - **Color**: color by speed, age, height or particle (and by attractor for
   Newton–Leipnik); six palettes; color cycling; trail brightness.
 - **Glow**: bloom strength, radius and threshold.
@@ -114,7 +111,7 @@ Keyboard:
 
 | Key | Action |
 | --- | --- |
-| 1–9 | Switch to one of the first nine systems |
+| 1–9 | Switch attractor |
 | C / P | Cycle color mode / palette |
 | R | Toggle auto-rotate |
 | `[` `]` | Fewer / more particles |
@@ -135,8 +132,7 @@ As in the original, three photo-textured balls ride on the first three
 particles. The round thumbnails under "Photo balls" in the panel show them. Click one
 to replace that photo with an image from your computer. Your choice is
 remembered in this browser only and never uploaded. ↺ restores the original
-photos, and ◉ (or F) hides the balls. They only appear on the flows: on a map,
-points jump across the plane every iteration.
+photos, and ◉ (or F) hides the balls.
 
 A fourth rider, an **A-10 Warthog** in dark charcoal, flies along its own
 particle. It stays upright, banks into turns, and its engine exhaust grows
@@ -158,12 +154,11 @@ npm run build    # static output in dist/
 - `src/attractors/`: one file per system with equations, parameter ranges,
   example sets, default dt and particle size (ported from the original `DE`
   table).
-  2D maps are defined with `defineMap`, as an Euler step with dt = 1.
 - `src/simulation/`: integrators, reference-trajectory analysis (including
   multiple attractors), the particle system with its trail ring buffer, and
   the analysis tools: Lyapunov meter, bifurcation diagram, Poincaré section.
 - `src/scene/`: Three.js stage (camera, controls, bloom), trail and particle
-  shaders, palettes, photo balls, section plane, axes.
+  shaders, palettes, photo balls, the A-10, section plane, axes.
 - `src/app/`: the `App` class tying simulation, view and camera together; the
   single API the panel and keyboard use.
 - `src/ui/`: the control panel (Tweakpane), sweep and Poincaré sections, and

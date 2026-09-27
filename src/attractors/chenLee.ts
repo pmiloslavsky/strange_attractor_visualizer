@@ -13,7 +13,7 @@ export const chenLee = defineAttractor({
   dt: 0.001,
   particleSize: 0.33,
   seedRange: [-1, 1],
-  simSpeed: 0.8,
+  simSpeed: 0.4,
   derivative(x, y, z, [a, b, c], out) {
     out[0] = a * x - y * z;
     out[1] = b * y + x * z;

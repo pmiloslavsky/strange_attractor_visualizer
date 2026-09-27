@@ -15,8 +15,6 @@ import type { ColorMode } from '../scene/shaders';
 
 export const LIMITS = {
   particles: { min: 1, max: 8000 },
-  /** Maps are points only (no trails), so they can afford far more. */
-  mapParticles: { min: 1000, max: 400_000 },
   trail: { min: 2, max: 2000 },
   /** particles × trail cap: keeps trail buffers under ~100 MB. */
   maxVertices: 3_000_000,
@@ -32,11 +30,11 @@ const DEFAULT_TRAIL = 240;
 /** Initial viewing direction (from target toward camera), in world space. */
 const VIEW_DIR = new THREE.Vector3(1, 0.45, 1.2).normalize();
 /**
- * Maps lie in the model's z = 0 plane, which is the world's horizontal plane,
- * so view them from (almost) straight above. The slight tilt fixes which way
- * is up on screen (model +y), and auto-rotate then spins the image in place.
+ * Looking (almost) straight down on the model's z = 0 plane, which is the
+ * world's horizontal plane; used for the basin slice. The slight tilt fixes
+ * which way is up on screen (model +y).
  */
-const MAP_VIEW_DIR = new THREE.Vector3(0, 1, 0.02).normalize();
+const TOP_VIEW_DIR = new THREE.Vector3(0, 1, 0.02).normalize();
 /** The jet rides the particle after the three photo balls (0–2). */
 export const JET_PARTICLE = 3;
 /** Minimum particle count for the basin demo, so the pattern reads clearly. */
@@ -60,7 +58,7 @@ export class App {
   private readonly sectionView: SectionView;
   /** The original's x/y/z reference axes (off by default). */
   private readonly axes = new AxesView();
-  /** A jet with afterburners flying along particle JET_PARTICLE (flows only). */
+  /** The A-10 flying along particle JET_PARTICLE. */
   private readonly jet = new JetView();
   private sectionEnabled = false;
   private sectionKey = '';
@@ -87,12 +85,6 @@ export class App {
   /** Pending "follow the particles in" camera move after the basin demo. */
   private followUpTimer: ReturnType<typeof setTimeout> | undefined;
   private followUpToken: object | null = null;
-  /** Last particle/trail settings used for each kind, restored when switching back. */
-  private kindConfig = {
-    flow: { count: DEFAULT_PARTICLES, trail: DEFAULT_TRAIL },
-    // Map iteration runs on the CPU; start phones (narrow screens) lighter.
-    map: { count: matchMedia('(max-width: 720px)').matches ? 80_000 : 200_000, trail: 2 },
-  };
 
   constructor(container: HTMLElement) {
     this.stage = new Stage(container);
@@ -149,19 +141,9 @@ export class App {
       this.sys.configure(this.countBeforeBasins, this.sys.trailLength);
       this.countBeforeBasins = undefined;
     }
-    const prevKind = this.sys.attractor.kind;
-    this.kindConfig[prevKind] = { count: this.sys.count, trail: this.sys.trailLength };
     this.sys.setAttractor(a);
-    const kindChanged = a.kind !== prevKind;
-    if (kindChanged) {
-      // Positions were just reseeded on the new attractor, so configure()
-      // keeps them and only adds or drops particles.
-      const { count, trail } = this.kindConfig[a.kind];
-      this.sys.configure(count, trail);
-    }
     this.view.setStyle({ particleSize: a.particleSize });
     this.resetSection();
-    this.setSectionEnabled(this.sectionWanted); // maps have no section; re-evaluate for this system
     let glide: Promise<void>;
     if (this.sys.hasBasins) {
       // Several attractors: open with the basin demo, colored by destination.
@@ -175,7 +157,7 @@ export class App {
       glide = this.seedRegion(900);
     } else {
       if (this.view.style.colorMode === 'attractor') this.view.setStyle({ colorMode: this.colorModeBeforeBasins });
-      glide = this.frameCamera(900, kindChanged ? (a.kind === 'map' ? MAP_VIEW_DIR : VIEW_DIR) : undefined);
+      glide = this.frameCamera(900);
     }
     this.emit();
     await this.tweens.run(500, (k) => (this.view.fade = k));
@@ -290,8 +272,8 @@ export class App {
     clearTimeout(this.followUpTimer);
     this.followUpTimer = setTimeout(() => {
       if (this.followUpToken === token && this.sys.hasBasins) void this.frameCamera(2000, VIEW_DIR);
-    }, 4000 + animateMs);
-    return this.frameCamera(animateMs, MAP_VIEW_DIR, { center, radius });
+    }, 10_000 + animateMs); // ≈ 10 time units at Newton–Leipnik's simSpeed of 1
+    return this.frameCamera(animateMs, TOP_VIEW_DIR, { center, radius });
   }
 
   /**
@@ -328,14 +310,14 @@ export class App {
 
   // --- Ride along --------------------------------------------------------------
 
-  /** Index of the particle the camera is riding with (0–2 photo balls, 3 the jet), or null. */
+  /** Index of the particle the camera is riding with (0–2 photo balls, 3 the A-10), or null. */
   ride: number | null = null;
   private rideLook = new THREE.Vector3();
   private rideAutoRotate = false;
 
-  /** Chase-camera ride on particle `i` (flows only). Dragging the view, Esc or stopRide() ends it. */
+  /** Chase-camera ride on particle `i`. Dragging the view, Esc or stopRide() ends it. */
   startRide(i: number) {
-    if (this.attractor.kind !== 'flow' || i >= this.sys.count) return;
+    if (i >= this.sys.count) return;
     if (this.ride === null) this.rideAutoRotate = this.stage.controls.autoRotate;
     this.ride = i;
     this.followUpToken = null;
@@ -367,7 +349,7 @@ export class App {
   private updateRide(realDt: number) {
     if (this.ride === null) return;
     const i = this.ride;
-    if (i >= this.sys.count || this.attractor.kind !== 'flow') return this.stopRide();
+    if (i >= this.sys.count) return this.stopRide();
     const { pos, params, attractor } = this.sys;
     const r = this.sys.analysis.radius;
     const d: [number, number, number] = [0, 0, 0];
@@ -387,13 +369,9 @@ export class App {
 
   // --- Poincaré section --------------------------------------------------------
 
-  /** Whether the UI asked for the section (it stays off on maps regardless). */
-  private sectionWanted = false;
-
   setSectionEnabled(on: boolean) {
-    this.sectionWanted = on;
-    this.sectionEnabled = on && this.attractor.kind === 'flow';
-    this.sectionView.visible = this.sectionEnabled;
+    this.sectionEnabled = on;
+    this.sectionView.visible = on;
     if (!on) this.section.clear();
   }
 
@@ -424,26 +402,16 @@ export class App {
 
   // --- Particles & style -----------------------------------------------------
 
-  /** Particle-count range for the current kind of system. */
-  get particleLimits(): { min: number; max: number } {
-    return this.attractor.kind === 'map' ? LIMITS.mapParticles : LIMITS.particles;
-  }
-
   /** Keeps particles × trail within the vertex budget by shortening trails if needed. */
   setCount(n: number) {
-    const { min, max } = this.particleLimits;
-    const count = THREE.MathUtils.clamp(Math.round(n), min, max);
-    // Maps have no trails; the budget only applies to flows.
-    const trail = this.attractor.kind === 'map'
-      ? LIMITS.trail.min
-      : Math.min(this.sys.trailLength, Math.floor(LIMITS.maxVertices / count));
+    const count = THREE.MathUtils.clamp(Math.round(n), LIMITS.particles.min, LIMITS.particles.max);
+    const trail = Math.min(this.sys.trailLength, Math.floor(LIMITS.maxVertices / count));
     this.sys.configure(count, Math.max(LIMITS.trail.min, trail));
     this.emit();
   }
 
   /** Keeps particles × trail within the vertex budget by reducing particles if needed. */
   setTrail(n: number) {
-    if (this.attractor.kind === 'map') return; // maps are drawn without trails
     const trail = THREE.MathUtils.clamp(Math.round(n), LIMITS.trail.min, LIMITS.trail.max);
     const count = Math.min(this.sys.count, Math.floor(LIMITS.maxVertices / trail));
     this.sys.configure(Math.max(LIMITS.particles.min, count), trail);
@@ -478,7 +446,7 @@ export class App {
   private syncJet(realDt: number) {
     const i = JET_PARTICLE;
     const { pos, params, attractor, count } = this.sys;
-    const show = attractor.kind === 'flow' && count > i;
+    const show = count > i;
     const d: [number, number, number] = [0, 0, 0];
     if (show) attractor.derivative(pos[3 * i]!, pos[3 * i + 1]!, pos[3 * i + 2]!, params, d);
     // Throttle: the jet's speed within this attractor's typical range (same scale as speed coloring).
@@ -600,7 +568,7 @@ export class App {
       this.collectSection(); // before view.sync, which consumes sys.lastWrite
       this.view.sync(realDt);
       this.sectionView.sync(this.sys.analysis);
-      this.axes.sync(this.sys.analysis, this.attractor.kind === 'map');
+      this.axes.sync(this.sys.analysis);
       this.updateRide(realDt);
       this.family.sync(this.view.fade, this.stage.camera, this.view.projScale, this.ride);
       this.syncJet(realDt);

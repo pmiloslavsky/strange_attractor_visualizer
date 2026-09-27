@@ -19,7 +19,7 @@ export interface BifurcationRequest {
 export interface BifurcationColumn {
   index: number;
   value: number;
-  /** Local maxima of z (flows) or x values (maps); empty if it diverged. */
+  /** Local maxima of z (or the resting z at a fixed point); empty if it diverged. */
   points: Float32Array;
 }
 
@@ -29,9 +29,8 @@ const ESCAPE = 1e6;
 /**
  * The classic bifurcation diagram, computed column by column. For each value
  * of one parameter, integrate a single trajectory, skip a transient, and
- * record what it settles into: for flows, the local maxima of z (one point
- * for a simple loop, two after a period doubling, a smear when chaotic); for
- * maps, the x values themselves.
+ * record what it settles into: the local maxima of z (one point for a simple
+ * loop, two after a period doubling, a smear when chaotic).
  *
  * Each column starts where the previous one ended, so the diagram follows
  * the attractor continuously as the parameter changes, as in textbooks.
@@ -43,14 +42,13 @@ const ESCAPE = 1e6;
 export function* bifurcationColumns(req: BifurcationRequest): Generator<BifurcationColumn> {
   const { attractor: a, param, from, to, dt, integrator } = req;
   const columns = req.columns ?? 240;
-  const isMap = a.kind === 'map';
   const p = [...req.params];
   const s = new Float64Array(req.start);
   // Model-time budgets, capped in steps so a tiny dt can't stall a frame.
   // Convergence slows near each bifurcation, so the transient is generous;
   // recording ~300 time units gives dozens of peaks even for slow loops.
-  const transient = isMap ? 300 : Math.min(Math.round(200 / dt), 150_000);
-  const record = isMap ? 600 : Math.min(Math.round(300 / dt), 200_000);
+  const transient = Math.min(Math.round(200 / dt), 150_000);
+  const record = Math.min(Math.round(300 / dt), 200_000);
 
   for (let c = 0; c < columns; c++) {
     const value = from + ((to - from) * c) / (columns - 1);
@@ -65,17 +63,13 @@ export function* bifurcationColumns(req: BifurcationRequest): Generator<Bifurcat
         break;
       }
       if (i < transient) continue;
-      if (isMap) {
-        out.push(s[0]!);
-      } else {
-        const v = s[2]!;
-        if (prev1 > prev2 && prev1 >= v) out.push(prev1);
-        prev2 = prev1;
-        prev1 = v;
-      }
+      const v = s[2]!;
+      if (prev1 > prev2 && prev1 >= v) out.push(prev1);
+      prev2 = prev1;
+      prev1 = v;
     }
     // Settled onto a fixed point: no peaks, but its z value is still the answer.
-    if (ok && !isMap && out.length === 0) out.push(s[2]!);
+    if (ok && out.length === 0) out.push(s[2]!);
     if (!ok) s.set(req.start); // restart the next column from a sane point
     yield { index: c, value, points: ok ? Float32Array.from(out) : new Float32Array(0) };
   }

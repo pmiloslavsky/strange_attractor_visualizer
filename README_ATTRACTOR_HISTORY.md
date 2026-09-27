@@ -1,8 +1,7 @@
 # The Attractors: History and Background
 
-The first nine systems in the visualizer are each a set of three coupled
-ordinary differential equations (the last two are 2D iterated maps, covered
-[at the end](#2d-maps-clifford-and-peter-de-jong)). Start almost anywhere and a trajectory settles onto a bounded shape,
+Each system in the visualizer is a set of three coupled ordinary differential
+equations. Start almost anywhere and a trajectory settles onto a bounded shape,
 the *attractor*, but never repeats itself and never settles into a loop. Two
 starting points that are arbitrarily close drift apart exponentially fast.
 This combination of boundedness, aperiodicity and sensitive dependence is what
@@ -28,8 +27,6 @@ Notation follows the code: `dx/dt` etc., with parameters named as in the sliders
 | 7 | [Dadras](#dadras) | 2009 | Multi-scroll attractor design |
 | 8 | [Chua's circuit](#chuas-circuit) | 1983 | A real electronic circuit |
 | 9 | [Newton–Leipnik](#newtonleipnik) | 1981 | Rigid-body motion; two attractors at once |
-| 10 | [Clifford](#clifford) | | Computer art (2D map) |
-| 11 | [Peter de Jong](#peter-de-jong) | 1987 | Computer art (2D map) |
 
 ---
 
@@ -333,66 +330,6 @@ drops the "attractor" color mode, because there is only one attractor left.
 
 - [Leipnik, R. B., Newton, T. A. (1981). Double strange attractors in rigid body motion with linear feedback control. *Physics Letters A* 86(2): 63–67](https://www.sciencedirect.com/science/article/abs/pii/0375960181901651)
 - [Basin of attraction (Wikipedia, "Attractor")](https://en.wikipedia.org/wiki/Attractor#Basins_of_attraction)
-
----
-
-## 2D maps: Clifford and Peter de Jong
-
-The flows above move continuously, and a continuous flow needs at least three
-dimensions to be chaotic: in two, the
-[Poincaré–Bendixson theorem](https://en.wikipedia.org/wiki/Poincar%C3%A9%E2%80%93Bendixson_theorem)
-guarantees trajectories settle into a point or a loop. An *iterated map* has no
-such limit. It jumps: apply a formula to (x, y) to get the next point, then
-apply it again. Even in two dimensions, the sequence of points can be chaotic,
-hopping unpredictably yet filling in a fixed, often fractal shape. The best
-known example is the [Hénon map](https://en.wikipedia.org/wiki/H%C3%A9non_map)
-(1976).
-
-A single point's path is a scatter of dots, not a curve, so the visualizer
-draws maps differently: hundreds of thousands of points each iterate once per
-step, and brightness shows how often the orbit visits each region. That density
-image is the attractor. Change a parameter and the whole cloud morphs live.
-(Under the hood, a map is one Euler step with dt = 1, so it runs through the
-same engine as the flows.)
-
-The example parameter sets for both maps come from Paul Bourke's pages.
-
-### Clifford
-
-<img src="docs/screenshots/clifford.jpg" width="480" alt="Clifford attractor">
-
-```
-x′ = sin(a·y) + c·cos(a·x)
-y′ = sin(b·x) + d·cos(b·y)
-```
-
-Default: a = −1.4, b = 1.6, c = 1.0, d = 0.7, plus six more presets.
-
-Paul Bourke attributes this map to **Clifford Pickover**, the writer and
-researcher known for his books on computer art, fractals and mathematical
-curiosities. Two sine-and-cosine terms per coordinate are enough to produce
-flowing, silky shapes that look nothing alike from one parameter set to the
-next.
-
-- [Clifford Attractors (Paul Bourke)](https://paulbourke.net/fractals/clifford/)
-
-### Peter de Jong
-
-<img src="docs/screenshots/de-jong.jpg" width="480" alt="Peter de Jong attractor">
-
-```
-x′ = sin(a·y) − cos(b·x)
-y′ = sin(c·x) − cos(d·y)
-```
-
-Default: a = 1.4, b = −2.3, c = 2.4, d = −2.1, plus eight more presets.
-
-Named after **Peter de Jong**, this close cousin of the Clifford map swaps
-which variable each trigonometric term uses. Paul Bourke's page traces it to
-*Scientific American* in July 1987. It became a staple of generative art: the
-parameter space is full of distinct, delicate structures.
-
-- [Peter de Jong Attractors (Paul Bourke)](https://paulbourke.net/fractals/peterdejong/)
 
 ---
 
