@@ -337,6 +337,11 @@ button {
   background: rgba(127, 214, 255, 0.13);
 }
 
+/* Tweakpane bolds button text by default; keep bold for the headings only. */
+.tp-host .tp-btnv_b {
+  font-weight: 400;
+}
+
 .tp-host .tp-rotv_m,
 .tp-host .tp-fldv_m {
   opacity: 1;
