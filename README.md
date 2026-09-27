@@ -38,6 +38,26 @@ fly off and assemble into the two differently colored attractors:
 Where these equations come from, who discovered them, and links to the
 original papers: **[README_ATTRACTOR_HISTORY.md](README_ATTRACTOR_HISTORY.md)**.
 
+### Presets
+
+Each system has up to four named presets: the original's example settings plus
+other parameter values with a visibly different shape or behavior. Step through
+them with **Next preset ▶** in the Parameters folder or the N key; the
+attractor morphs to the new values and the camera zooms to fit it. These are
+the most distinctive ones, each captured after it settled:
+
+| | | | | |
+|:---|:---:|:---:|:---:|:---:|
+| **Lorenz** | <img src="docs/screenshots/presets/lorenz-p1.jpg" width="190" alt="Lorenz: Classic butterfly"><br>Classic butterfly | | | |
+| **Chen–Lee** | <img src="docs/screenshots/presets/chen-lee-p1.jpg" width="190" alt="Chen-Lee: Default"><br>Default | <img src="docs/screenshots/presets/chen-lee-p2.jpg" width="190" alt="Chen-Lee: Stronger chaos"><br>Stronger chaos (c = −0.7) | <img src="docs/screenshots/presets/chen-lee-p3.jpg" width="190" alt="Chen-Lee: Lopsided"><br>Lopsided (b = −15) | |
+| **Rössler** | <img src="docs/screenshots/presets/rossler-p1.jpg" width="190" alt="Rossler: Chaos"><br>Chaos (c = 5.7) | <img src="docs/screenshots/presets/rossler-p2.jpg" width="190" alt="Rossler: Wide chaos"><br>Wide chaos (original preset 2) | <img src="docs/screenshots/presets/rossler-p3.jpg" width="190" alt="Rossler: Two loops"><br>Two loops (c = 3.5) | <img src="docs/screenshots/presets/rossler-p4.jpg" width="190" alt="Rossler: Four loops"><br>Four loops (c = 4.1) |
+| **Aizawa** | <img src="docs/screenshots/presets/aizawa-p1.jpg" width="190" alt="Aizawa: Default"><br>Default | <img src="docs/screenshots/presets/aizawa-p3.jpg" width="190" alt="Aizawa: More chaos"><br>More chaos (f = 0.2) | <img src="docs/screenshots/presets/aizawa-p4.jpg" width="190" alt="Aizawa: Regular loop"><br>Regular loop (f = 0) | |
+| **Three-Scroll Unified** | <img src="docs/screenshots/presets/three-scroll-p1.jpg" width="190" alt="Three-Scroll: Default"><br>Default | <img src="docs/screenshots/presets/three-scroll-p2.jpg" width="190" alt="Three-Scroll: Wilder"><br>Wilder (f = 16) | <img src="docs/screenshots/presets/three-scroll-p3.jpg" width="190" alt="Three-Scroll: Periodic loop"><br>Periodic loop (f = 24) | |
+| **Thomas** | <img src="docs/screenshots/presets/thomas-p1.jpg" width="190" alt="Thomas: Edge of chaos"><br>Edge of chaos (b = 0.208186) | <img src="docs/screenshots/presets/thomas-p2.jpg" width="190" alt="Thomas: Periodic"><br>Periodic (b = 0.1998) | <img src="docs/screenshots/presets/thomas-p4.jpg" width="190" alt="Thomas: Deep chaos"><br>Deep chaos (b = 0.1) | |
+| **Dadras** | <img src="docs/screenshots/presets/dadras-p1.jpg" width="190" alt="Dadras: Default"><br>Default | <img src="docs/screenshots/presets/dadras-p2.jpg" width="190" alt="Dadras: Stronger chaos"><br>Stronger chaos (c = 2.2) | <img src="docs/screenshots/presets/dadras-p3.jpg" width="190" alt="Dadras: Compact"><br>Compact (d = 3) | <img src="docs/screenshots/presets/dadras-p4.jpg" width="190" alt="Dadras: Periodic loop"><br>Periodic loop (e = 12) |
+| **Chua's circuit** | <img src="docs/screenshots/presets/chua-p1.jpg" width="190" alt="Chua: Double scroll"><br>Double scroll | <img src="docs/screenshots/presets/chua-p2.jpg" width="190" alt="Chua: Double scroll, alpha 9"><br>Double scroll (α = 9) | <img src="docs/screenshots/presets/chua-p3.jpg" width="190" alt="Chua: Single scroll"><br>Single scroll (α = 8.5) | |
+| **Newton–Leipnik** | <img src="docs/screenshots/presets/newton-leipnik-p1.jpg" width="190" alt="Newton-Leipnik: Two attractors"><br>Two attractors | <img src="docs/screenshots/presets/newton-leipnik-p2.jpg" width="190" alt="Newton-Leipnik: Smaller pair"><br>Smaller pair (b = 0.13) | <img src="docs/screenshots/presets/newton-leipnik-p3.jpg" width="190" alt="Newton-Leipnik: Two periodic loops"><br>Two periodic loops (b = 0.22) | <img src="docs/screenshots/presets/newton-leipnik-p4.jpg" width="190" alt="Newton-Leipnik: One attractor"><br>One attractor (a = 0.45) |
+
 ## Exploring the chaos
 
 Beyond looking pretty, the panel has tools for seeing *why* these systems are
@@ -125,6 +145,7 @@ Keyboard:
 | A | Show / hide the x/y/z axes |
 | F | Show / hide the photo balls |
 | J | Show / hide the A-10 Warthog |
+| D | Show / hide the little figure in the top-left corner (click him for the next preset) |
 | S | Save a PNG screenshot |
 | Space | Pause |
 | H | Hide the on-screen UI |

@@ -19,12 +19,22 @@ const SHORTCUTS = [
   ['A', 'x/y/z axes on/off'],
   ['F', 'Photo balls on/off'],
   ['J', 'A-10 Warthog on/off'],
+  ['D', 'Corner figure on/off'],
   ['S', 'Save screenshot'],
   ['Space', 'Pause'],
   ['H', 'Hide all controls'],
 ] as const;
 
 const panel = new Panel(app, SHORTCUTS);
+const figure = Object.assign(document.createElement('img'), {
+  className: 'corner-figure',
+  src: 'figure/dario.png',
+  alt: '',
+  draggable: false,
+});
+// Easter egg: clicking the figure is the same as "Next preset".
+figure.addEventListener('click', () => app.nextPreset());
+document.body.appendChild(figure);
 
 function next<T>(list: readonly T[], current: T): T {
   return list[(list.indexOf(current) + 1) % list.length]!;
@@ -50,6 +60,7 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === 'n') app.nextPreset();
   else if (e.key === 'a') app.setAxesVisible(!app.axesVisible);
   else if (e.key === 'j') app.setJetVisible(!app.jetVisible);
+  else if (e.key === 'd') figure.hidden = !figure.hidden;
   // V cycles the ride through the three photo balls and the jet.
   else if (e.key === 'v') app.startRide(app.ride === null ? 0 : (app.ride + 1) % 4);
   else if (e.key === 'Escape' && app.ride !== null) app.stopRide();

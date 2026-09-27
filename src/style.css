@@ -36,6 +36,28 @@ button {
   color: inherit;
 }
 
+/* Tiny figure tucked into the top-left corner, about the size of a picker tile */
+.corner-figure {
+  position: fixed;
+  top: max(4px, env(safe-area-inset-top));
+  left: 4px;
+  height: 64px;
+  width: auto;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-drag: none;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+  transition: transform 0.15s ease;
+}
+
+.corner-figure:active {
+  transform: scale(0.92);
+}
+
+.corner-figure[hidden] {
+  display: none;
+}
+
 /* --- Panel ---------------------------------------------------------------- */
 
 .panel {

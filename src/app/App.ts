@@ -29,6 +29,13 @@ const DEFAULT_PARTICLES = 1500;
 const DEFAULT_TRAIL = 240;
 /** Initial viewing direction (from target toward camera), in world space. */
 const VIEW_DIR = new THREE.Vector3(1, 0.45, 1.2).normalize();
+
+/** What the camera frames: a bounding sphere, plus the box when known (model coords). */
+type FrameFit = {
+  readonly center: readonly number[];
+  readonly radius: number;
+  readonly ranges?: readonly (readonly [number, number])[];
+};
 /**
  * Looking (almost) straight down on the model's z = 0 plane, which is the
  * world's horizontal plane; used for the basin slice. The slight tilt fixes
@@ -246,7 +253,8 @@ export class App {
     });
     if (this.presetToken === token) {
       this.presetToken = null;
-      this.scheduleReanalyze(0);
+      // Always refit after a preset so the new shape fills, but never overflows, the view.
+      this.scheduleReanalyze(0, true);
     }
   }
 
@@ -300,7 +308,7 @@ export class App {
    * Re-run the reference trajectory after parameters or dt settle. Debounced so
    * dragging a slider stays smooth.
    */
-  private scheduleReanalyze(delay = 180) {
+  private scheduleReanalyze(delay = 180, forceFrame = false) {
     clearTimeout(this.reanalyzeTimer);
     this.reanalyzeTimer = setTimeout(() => {
       this.sys.reanalyze();
@@ -315,17 +323,24 @@ export class App {
         this.view.setStyle({ colorMode: this.colorModeBeforeBasins });
       }
       this.emit();
-      if (this.autoFrame) this.reframeIfNeeded();
+      if (this.autoFrame || forceFrame) this.reframeIfNeeded(forceFrame);
     }, delay);
   }
 
-  private reframeIfNeeded() {
+  /**
+   * Glide to a new framing when the attractor has moved, no longer fits on
+   * screen at the current zoom, or has shrunk to a small part of it. `always`
+   * reframes regardless (after a preset).
+   */
+  private reframeIfNeeded(always = false) {
     const a = this.sys.analysis;
     if (!a.ok || a.collapsed) return;
+    const { camera: cam, controls } = this.stage;
     const center = this.view.worldCenter();
-    const ratio = a.radius / this.framed.radius;
     const moved = center.distanceTo(this.framed.center) > 0.25 * this.framed.radius;
-    if (ratio < 0.7 || ratio > 1.4 || moved) void this.frameCamera(800);
+    const dir = cam.position.clone().sub(controls.target);
+    const ratio = dir.length() / this.frameDistance(a, dir.normalize());
+    if (always || moved || ratio < 0.98 || ratio > 1.6) void this.frameCamera(800);
   }
 
   // --- Ride along --------------------------------------------------------------
@@ -502,15 +517,53 @@ export class App {
 
   // --- Camera ----------------------------------------------------------------
 
-  /** Distance at which a sphere of `radius` fills the view with some margin. */
-  private frameDistance(radius: number): number {
+  /**
+   * Distance from the target at which the attractor fits the part of the view
+   * the panel doesn't cover. With a bounding box (`ranges`), its corners are
+   * projected exactly for the view direction `dir` — or, while auto-rotating,
+   * for every direction the spin will pass through, so it never grows past
+   * the screen edge mid-orbit. Without one, falls back to the sphere `radius`.
+   */
+  private frameDistance(fit: FrameFit, dir: THREE.Vector3): number {
     const cam = this.stage.camera;
-    const vfov = THREE.MathUtils.degToRad(cam.fov) / 2;
-    // Fit the part of the view the panel doesn't cover.
-    const hfov = Math.atan(Math.tan(vfov) * this.stage.visibleAspect);
-    // `radius` is half the bounding box's diagonal, which overstates how big
-    // the attractor looks on screen; 0.8 fills the view without clipping.
-    return (radius / Math.sin(Math.min(vfov, hfov))) * 0.8;
+    const tanV = Math.tan(THREE.MathUtils.degToRad(cam.fov) / 2);
+    const tanH = tanV * this.stage.visibleAspect;
+    if (!fit.ranges) {
+      // Half the box diagonal overstates the on-screen size; 0.8 fills without clipping.
+      return (fit.radius / Math.sin(Math.atan(Math.min(tanV, tanH)))) * 0.8;
+    }
+    // Corners must land within this fraction of the visible half-width/height;
+    // the ranges are 1–99% percentiles and trails reach a little past them.
+    const MARGIN = 0.88;
+    const target = this.view.modelToWorld(fit.center);
+    const up = cam.up.clone().normalize();
+    const corners: THREE.Vector3[] = [];
+    const [rx, ry, rz] = fit.ranges;
+    for (const x of rx!) for (const y of ry!) for (const z of rz!) {
+      corners.push(this.view.modelToWorld([x, y, z]).sub(target));
+    }
+    const dirs = this.stage.controls.autoRotate
+      ? Array.from({ length: 24 }, (_, i) => dir.clone().applyAxisAngle(up, (i / 24) * Math.PI * 2))
+      : [dir];
+    const back = new THREE.Vector3(), right = new THREE.Vector3(), camUp = new THREE.Vector3();
+    let need = 0;
+    for (const d of dirs) {
+      back.copy(d).normalize();
+      right.crossVectors(up, back);
+      if (right.lengthSq() < 1e-9) right.set(1, 0, 0); // looking straight along `up`
+      right.normalize();
+      camUp.crossVectors(back, right);
+      for (const c of corners) {
+        // Camera at distance D sees the corner at depth D − z.
+        const z = c.dot(back);
+        need = Math.max(
+          need,
+          z + Math.abs(c.dot(right)) / (tanH * MARGIN),
+          z + Math.abs(c.dot(camUp)) / (tanV * MARGIN),
+        );
+      }
+    }
+    return need;
   }
 
   /**
@@ -521,16 +574,16 @@ export class App {
   frameCamera(
     animateMs = 800,
     toDir?: THREE.Vector3,
-    fit: { center: [number, number, number]; radius: number } = this.sys.analysis,
+    fit: FrameFit = this.sys.analysis,
   ): Promise<void> {
     const { camera: cam, controls } = this.stage;
     const { radius } = fit;
     const toTarget = this.view.modelToWorld(fit.center);
-    const dist = this.frameDistance(radius);
     const fromDir = cam.position.clone().sub(controls.target);
     if (fromDir.lengthSq() < 1e-12) fromDir.copy(VIEW_DIR);
     fromDir.normalize();
     const endDir = (toDir ?? fromDir).clone().normalize();
+    const dist = this.frameDistance(fit, endDir);
     const dir = new THREE.Vector3();
     this.framed = { center: toTarget.clone(), radius };
 
