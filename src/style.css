@@ -309,6 +309,41 @@ button {
 }
 
 /*
+ * Section headings (pane and folder titles, and the sweep / Poincaré / shortcut
+ * summaries): bright, bold small caps with an accent bar, so they read above
+ * the tinted buttons rather than below them.
+ */
+.tp-host .tp-rotv_t,
+.tp-host .tp-fldv_t,
+.sweep > summary,
+.shortcuts > summary {
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tp-host .tp-rotv_b,
+.tp-host .tp-fldv_b,
+.sweep > summary {
+  border-left: 3px solid var(--accent);
+  background: rgba(127, 214, 255, 0.07);
+}
+
+.tp-host .tp-rotv_b:hover,
+.tp-host .tp-fldv_b:hover,
+.sweep > summary:hover {
+  background: rgba(127, 214, 255, 0.13);
+}
+
+.tp-host .tp-rotv_m,
+.tp-host .tp-fldv_m {
+  opacity: 1;
+  color: var(--accent);
+}
+
+/*
  * Native dropdown menus: options otherwise inherit the panel's light text but
  * render on the browser's default light popup, which is nearly unreadable.
  */
@@ -337,8 +372,9 @@ button {
 
 .sweep summary {
   cursor: pointer;
-  color: var(--text-dim);
-  padding: 2px 0;
+  margin: -6px -8px 0;
+  padding: 6px 8px;
+  border-radius: 8px;
 }
 
 .sweep[open] summary {
