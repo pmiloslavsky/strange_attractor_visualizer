@@ -17,6 +17,8 @@ const TEXTURE_SIZE = 256;
 const RELATIVE_SIZE = 0.08;
 /** Never draw a ball smaller than this many (drawing-buffer) pixels. */
 const MIN_PIXELS = 36;
+/** Seconds a ball takes to fade back in after being shot down. */
+const REAPPEAR = 0.8;
 
 /** Center-crop an image into a circle with a thin bright rim. */
 export function circularCanvas(img: CanvasImageSource & { width: number; height: number }): HTMLCanvasElement {
@@ -46,6 +48,8 @@ export class FamilyView {
   readonly group = new THREE.Group();
   private readonly sprites: THREE.Sprite[];
   private readonly tmp = new THREE.Vector3();
+  /** Seconds each ball stays knocked out; ≤ 0 once back (down to −REAPPEAR while fading in). */
+  private readonly downFor = DEFAULT_FAMILY.map(() => -REAPPEAR);
   /** Off by default; the tray's eye button or F shows them. */
   visible = false;
 
@@ -70,18 +74,51 @@ export class FamilyView {
     mat.needsUpdate = true;
   }
 
+  get count(): number {
+    return this.sprites.length;
+  }
+
+  /** Knock ball `i` out (shot down) for `seconds`; it fades back in afterwards. */
+  knockOut(i: number, seconds: number) {
+    this.downFor[i] = seconds;
+  }
+
+  /** Whether ball `i` is on screen and not knocked out: something the A-10 can shoot at. */
+  isTarget(i: number): boolean {
+    const sprite = this.sprites[i];
+    return !!sprite && sprite.visible && this.downFor[i]! <= 0;
+  }
+
+  /** World position of ball `i` as drawn last frame. */
+  worldPosition(i: number, target = new THREE.Vector3()): THREE.Vector3 {
+    this.group.updateMatrixWorld();
+    return target.copy(this.sprites[i]!.position).applyMatrix4(this.group.matrixWorld);
+  }
+
+  /** Ball `i`'s photo texture (circular crop), if loaded. */
+  texture(i: number): THREE.Texture | null {
+    return this.sprites[i]!.material.map;
+  }
+
+  /** World diameter of ball `i` as drawn last frame. */
+  worldSize(i: number): number {
+    return this.sprites[i]!.scale.x;
+  }
+
   /** `ridden`: index of the ball the camera is riding behind; drawn small so it doesn't fill the view. */
-  sync(fade: number, camera: THREE.Camera, projScale: number, ridden: number | null = null) {
+  sync(fade: number, camera: THREE.Camera, projScale: number, ridden: number | null = null, realDt = 0) {
     const { sys } = this;
     const worldSize = sys.analysis.radius * RELATIVE_SIZE;
     this.group.updateMatrixWorld();
     this.sprites.forEach((sprite, i) => {
-      sprite.visible = this.visible && i < sys.count && !!sprite.material.map;
+      // Count down while knocked out; the last REAPPEAR seconds are a fade-in.
+      const down = (this.downFor[i] = Math.max(-REAPPEAR, this.downFor[i]! - realDt));
+      sprite.visible = this.visible && i < sys.count && !!sprite.material.map && down <= 0;
       if (!sprite.visible) return;
       sprite.position.fromArray(sys.pos, 3 * i);
       const dist = this.tmp.copy(sprite.position).applyMatrix4(this.group.matrixWorld).distanceTo(camera.position);
       sprite.scale.setScalar(i === ridden ? worldSize * 0.3 : Math.max(worldSize, (MIN_PIXELS * dist) / projScale));
-      sprite.material.opacity = fade;
+      sprite.material.opacity = fade * Math.min(1, -down / REAPPEAR);
     });
   }
 }

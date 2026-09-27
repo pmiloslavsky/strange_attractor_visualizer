@@ -10,6 +10,7 @@ import { PoincareSection } from '../simulation/poincare';
 import { SectionView } from '../scene/SectionView';
 import { AxesView } from '../scene/AxesView';
 import { JetView } from '../scene/JetView';
+import { CannonView } from '../scene/CannonView';
 import { ParticleSystem, type SeedMode } from '../simulation/ParticleSystem';
 import type { ColorMode } from '../scene/shaders';
 
@@ -44,6 +45,8 @@ type FrameFit = {
 const TOP_VIEW_DIR = new THREE.Vector3(0, 1, 0.02).normalize();
 /** The jet rides the particle after the three photo balls (0–2). */
 export const JET_PARTICLE = 3;
+/** Seconds a photo ball stays gone after the A-10 shoots it down. */
+const KNOCKOUT_SECONDS = 10;
 /** Minimum particle count for the basin demo, so the pattern reads clearly. */
 const BASIN_PARTICLES = 4000;
 
@@ -67,6 +70,8 @@ export class App {
   private readonly axes = new AxesView();
   /** The A-10 flying along particle JET_PARTICLE. */
   private readonly jet = new JetView();
+  /** The A-10's cannon: now and then shoots down a photo ball. */
+  private readonly cannon = new CannonView();
   private sectionEnabled = false;
   private sectionKey = '';
   private readonly tweens = new Tweens();
@@ -103,7 +108,8 @@ export class App {
     this.view.group.add(this.sectionView.group, this.axes.group);
     this.stage.overlay.add(this.jet.body, this.jet.lights);
     this.jet.setEnvironment(this.stage.renderer, this.stage.overlay);
-    this.stage.scene.add(this.jet.flames);
+    this.stage.scene.add(this.jet.flames, this.cannon.group);
+    this.cannon.onKill = (i) => this.family.knockOut(i, KNOCKOUT_SECONDS);
     this.resetSection();
     this.view.setStyle({ particleSize: this.sys.attractor.particleSize });
     this.stage.scene.add(this.view.group);
@@ -141,6 +147,7 @@ export class App {
     this.followUpToken = null;
     this.sweep = null;
     this.stopRide(false); // the switch frames the camera itself
+    this.cannon.reset();
     clearTimeout(this.reanalyzeTimer);
     await this.tweens.run(250, (k) => (this.view.fade = 1 - k));
     if (this.countBeforeBasins !== undefined) {
@@ -477,6 +484,22 @@ export class App {
     this.emit();
   }
 
+  /** Whether the A-10 shoots at the photo balls now and then (only while both are shown). */
+  get cannonEnabled(): boolean {
+    return this.cannon.enabled;
+  }
+
+  setCannonEnabled(on: boolean) {
+    this.cannon.enabled = on;
+    if (!on) this.cannon.reset();
+    this.emit();
+  }
+
+  /** Fire a burst now, at the next ball ahead of the nose (for demos and testing). */
+  fireCannon() {
+    this.cannon.fireSoon();
+  }
+
   /** Fly the jet along its particle, nose along the flow direction from the equations. */
   private syncJet(realDt: number) {
     const i = JET_PARTICLE;
@@ -657,8 +680,9 @@ export class App {
       this.sectionView.sync(this.sys.analysis);
       this.axes.sync(this.sys.analysis);
       this.updateRide(realDt);
-      this.family.sync(this.view.fade, this.stage.camera, this.view.projScale, this.ride);
+      this.family.sync(this.view.fade, this.stage.camera, this.view.projScale, this.ride, realDt);
       this.syncJet(realDt);
+      this.cannon.update(realDt, this.jet, this.family, this.stage.camera, this.ride, this.paused || this.switching);
       this.stage.render();
     });
   }

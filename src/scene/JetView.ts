@@ -12,7 +12,7 @@ const MAX_BANK = 1.1;
 type P2 = [number, number];
 
 /** Soft radial glow (white center fading to transparent), tinted by the sprite color. */
-function glowTexture(): THREE.CanvasTexture {
+export function glowTexture(): THREE.CanvasTexture {
   const c = document.createElement('canvas');
   c.width = c.height = 64;
   const ctx = c.getContext('2d')!;
@@ -295,6 +295,22 @@ export class JetView {
     // Lights only affect the airframe's materials (everything else in the overlay is unlit).
     // They live beside the body, not inside it, so its scale and rotation don't move them.
     this.lights.add(new THREE.HemisphereLight('#dfe9ff', '#1a2233', 0.9), this.light, this.light.target);
+  }
+
+  /** Whether the aircraft was drawn this frame. */
+  get flying(): boolean {
+    return this.body.visible;
+  }
+
+  /** World position of the cannon muzzle under the nose. */
+  muzzle(target = new THREE.Vector3()): THREE.Vector3 {
+    this.body.updateMatrixWorld();
+    return this.body.localToWorld(target.set(0, -0.018, 0.53));
+  }
+
+  /** World direction the nose points. */
+  forward(target = new THREE.Vector3()): THREE.Vector3 {
+    return target.set(0, 0, 1).applyQuaternion(this.body.quaternion);
   }
 
   /**

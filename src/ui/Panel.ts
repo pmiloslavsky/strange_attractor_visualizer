@@ -47,6 +47,7 @@ export class Panel {
   private readonly status = el('div', 'status');
   private readonly meter = el('div', 'meter');
   private readonly jetButton = el('button', 'family-btn jet-btn');
+  private readonly cannonButton = el('button', 'family-btn jet-btn');
   private toggle!: HTMLButtonElement;
   private readonly paramHost = el('div', 'tp-host');
   private readonly mainHost = el('div', 'tp-host');
@@ -104,7 +105,9 @@ export class Panel {
     this.tray = createFamilyTray(app.family, photos, (v) => app.setFamilyVisible(v));
     this.jetButton.textContent = '✈';
     this.jetButton.addEventListener('click', () => app.setJetVisible(!app.jetVisible));
-    this.tray.element.append(this.jetButton);
+    this.cannonButton.textContent = '⌖';
+    this.cannonButton.addEventListener('click', () => app.setCannonEnabled(!app.cannonEnabled));
+    this.tray.element.append(this.jetButton, this.cannonButton);
 
     const help = el('details', 'shortcuts');
     help.append(el('summary', undefined, 'Keyboard shortcuts'));
@@ -378,6 +381,9 @@ export class Panel {
     // Say what a click will do, not both options.
     this.jetButton.title = `${app.jetVisible ? 'Hide' : 'Show'} the A-10 Warthog (J)`;
     this.jetButton.setAttribute('aria-label', this.jetButton.title);
+    this.cannonButton.classList.toggle('off', !app.cannonEnabled);
+    this.cannonButton.title = `Turn ${app.cannonEnabled ? 'off' : 'on'} the A-10's cannon: now and then it shoots down a photo ball (M)`;
+    this.cannonButton.setAttribute('aria-label', this.cannonButton.title);
     this.sweep.refresh();
     this.poincare.refresh();
     const an = app.sys.analysis;

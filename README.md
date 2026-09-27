@@ -145,6 +145,7 @@ Keyboard:
 | A | Show / hide the x/y/z axes |
 | F | Show / hide the photo balls |
 | J | Show / hide the A-10 Warthog |
+| M | Turn the A-10's cannon on / off |
 | D | Show / hide the little figure in the top-left corner (click him for the next preset) |
 | S | Save a PNG screenshot |
 | Space | Pause |
@@ -163,6 +164,12 @@ particle. It stays upright, banks into turns, and its engine exhaust grows
 brighter and longer the faster the flow is moving. (The real A-10 has no
 afterburners; these are for show.) ✈ (or J) toggles it, and "ride with → A-10"
 (or V) puts the camera behind it.
+
+While the photo balls are showing, the A-10 now and then (every 15–30 seconds)
+lines up on one and fires a short burst from its nose cannon. Enough hits blow
+the ball apart in a small fireball, and it stays gone for 10 seconds before
+fading back in. About a third of the bursts miss and streak past. ⌖ (or M)
+turns the cannon off.
 
 ## Develop
 

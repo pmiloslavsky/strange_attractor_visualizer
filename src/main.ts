@@ -19,6 +19,7 @@ const SHORTCUTS = [
   ['A', 'x/y/z axes on/off'],
   ['F', 'Photo balls on/off'],
   ['J', 'A-10 Warthog on/off'],
+  ['M', 'A-10 cannon on/off (shoots the photo balls now and then)'],
   ['D', 'Corner figure on/off'],
   ['S', 'Save screenshot'],
   ['Space', 'Pause'],
@@ -60,6 +61,7 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === 'n') app.nextPreset();
   else if (e.key === 'a') app.setAxesVisible(!app.axesVisible);
   else if (e.key === 'j') app.setJetVisible(!app.jetVisible);
+  else if (e.key === 'm') app.setCannonEnabled(!app.cannonEnabled);
   else if (e.key === 'd') figure.hidden = !figure.hidden;
   // V cycles the ride through the three photo balls and the jet.
   else if (e.key === 'v') app.startRide(app.ride === null ? 0 : (app.ride + 1) % 4);
