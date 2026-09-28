@@ -13,6 +13,7 @@ import { JetView } from '../scene/JetView';
 import { CannonView } from '../scene/CannonView';
 import { HeliView } from '../scene/HeliView';
 import { MissileView } from '../scene/MissileView';
+import { KnifeView } from '../scene/KnifeView';
 import { Effects } from '../scene/Effects';
 import { KNOCKOUT_SECONDS, type Target } from '../scene/combat';
 import { ParticleSystem, type SeedMode } from '../simulation/ParticleSystem';
@@ -83,12 +84,15 @@ export class App {
   private readonly cannon = new CannonView(this.effects);
   /** The Apache's missiles: now and then fired at a photo ball or the A-10. */
   private readonly missiles = new MissileView(this.effects);
+  /** Moorcat (photo ball 0) fights back: now and then throws knives at the aircraft. */
+  private readonly knives = new KnifeView(this.effects);
   private readonly lights = new THREE.Group();
   private readonly keyLight = new THREE.DirectionalLight('#ffffff', 2.2);
   /** What each weapon may shoot at (the ridden rider is skipped per frame). */
   private cannonTargets: Target[] = [];
   private missileTargets: Target[] = [];
   private ballTargets: Target[] = [];
+  private aircraftTargets: Target[] = [];
   /** Called when the last photo ball is shot down. */
   onMassacre?: () => void;
   private sectionEnabled = false;
@@ -125,7 +129,7 @@ export class App {
     this.chaos = new LyapunovMeter(this.sys);
     this.sectionView = new SectionView(this.section);
     this.view.group.add(this.sectionView.group, this.axes.group);
-    this.stage.overlay.add(this.jet.body, this.heli.body, this.missiles.bodies, this.lights);
+    this.stage.overlay.add(this.jet.body, this.heli.body, this.missiles.bodies, this.knives.bodies, this.lights);
     this.jet.setEnvironment(this.stage.renderer, this.stage.overlay);
     // Aircraft and missile lighting: soft sky/ground fill plus a key light from
     // over the camera's shoulder (aimed each frame), so the side we see is lit.
@@ -171,6 +175,7 @@ export class App {
     this.stopRide(false); // the switch frames the camera itself
     this.cannon.reset();
     this.missiles.reset();
+    this.knives.reset();
     clearTimeout(this.reanalyzeTimer);
     await this.tweens.run(250, (k) => (this.view.fade = 1 - k));
     if (this.countBeforeBasins !== undefined) {
@@ -536,10 +541,11 @@ export class App {
   }
 
   setWeaponsEnabled(on: boolean) {
-    this.cannon.enabled = this.missiles.enabled = on;
+    this.cannon.enabled = this.missiles.enabled = this.knives.enabled = on;
     if (!on) {
       this.cannon.reset();
       this.missiles.reset();
+      this.knives.reset();
     }
     this.emit();
   }
@@ -548,6 +554,7 @@ export class App {
   fireNow() {
     this.cannon.fireSoon();
     this.missiles.fireSoon();
+    this.knives.throwSoon();
   }
 
   /** Everything that can be shot down, and who may shoot at what. */
@@ -571,8 +578,10 @@ export class App {
       photo: () => null,
       kill: () => craft.knockout.knockOut(KNOCKOUT_SECONDS),
     });
-    this.cannonTargets = [...this.ballTargets, aircraft(heli)];
-    this.missileTargets = [...this.ballTargets, aircraft(jet)];
+    const jetTarget = aircraft(jet), heliTarget = aircraft(heli);
+    this.cannonTargets = [...this.ballTargets, heliTarget];
+    this.missileTargets = [...this.ballTargets, jetTarget];
+    this.aircraftTargets = [heliTarget, jetTarget];
   }
 
   /** Targets minus whatever the camera is riding with (index as in RIDERS order). */
@@ -618,12 +627,24 @@ export class App {
     this.keyLight.target.position.copy(controls.target);
   }
 
-  /** Let the aircraft shoot: the A-10 at balls and the Apache, the Apache at balls and the A-10. */
+  /** The knife-throwing cat: photo ball 0 (Moorcat). */
+  private readonly cat = {
+    alive: () => this.family.isTarget(0),
+    position: (t?: THREE.Vector3) => this.family.worldPosition(0, t),
+    size: () => this.family.worldSize(0),
+    onThrow: () => this.family.pulse(0),
+  };
+
+  /**
+   * Let everyone fight: the A-10 shoots at the balls and the Apache, the Apache
+   * at the balls and the A-10, and the cat throws knives at both aircraft.
+   */
   private syncCombat(realDt: number) {
     const hold = this.paused || this.switching;
     const balls = [0, 1, 2];
     this.cannon.update(realDt, this.jet, this.notRidden(this.cannonTargets, [...balls, HELI_PARTICLE]), hold);
     this.missiles.update(realDt, this.heli, this.notRidden(this.missileTargets, [...balls, JET_PARTICLE]), hold);
+    this.knives.update(realDt, this.cat, this.notRidden(this.aircraftTargets, [HELI_PARTICLE, JET_PARTICLE]), hold);
     this.effects.update(Math.min(realDt, 0.1), this.stage.camera);
   }
 

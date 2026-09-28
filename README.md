@@ -147,7 +147,7 @@ Keyboard:
 | F | Show / hide the photo balls |
 | J | Show / hide the A-10 Warthog |
 | K | Show / hide the Apache helicopter |
-| M | Turn the weapons on / off |
+| M | Turn the weapons on / off (cannon, missiles and the cat's knives) |
 | D | Show / hide the little figure in the top-left corner (click him to step through every preset of every system) |
 | S | Save a PNG screenshot |
 | Space | Pause |
@@ -177,14 +177,17 @@ into turns:
 Apache and fires a burst from its nose cannon; about a third of the bursts miss
 and streak past. The Apache fires pairs of homing missiles at a photo ball or
 the A-10, which drop from the racks, light their motors and curve in on a
-smoke trail; about a quarter lose lock and self-destruct. Whatever is shot
-down blows apart in a small fireball and stays gone for **2 minutes**. When
-all three photo balls are down, the little figure in the corner says so. ⌖
-(or M) turns the weapons off.
+smoke trail; about a quarter lose lock and self-destruct. And Moorcat, the
+cat, fights back: every 10–20 seconds it throws a volley of three knives,
+tumbling end over end in an arc, at the Apache or the A-10; two hits bring an
+aircraft down. Whatever is shot down blows apart in a small fireball and stays
+gone for **2 minutes**. When all three photo balls are down, the little figure
+in the corner says so. ⌖ (or M) turns all the weapons off.
 
 | | |
 |:---:|:---:|
 | <img src="docs/screenshots/apache-missiles.jpg" width="420" alt="The Apache firing a pair of missiles, their smoke trails curving toward the photo balls"><br>The Apache fires a pair of Hellfires at a photo ball | <img src="docs/screenshots/a10-cannon.jpg" width="420" alt="The A-10 firing a stream of glowing cannon tracers at the Apache"><br>The A-10 opens up on the Apache with its cannon |
+| <img src="docs/screenshots/cat-knives.jpg" width="420" alt="The cat photo ball throwing three knives in an arc at the Apache"><br>Moorcat throws knives at the Apache | |
 
 ## Develop
 

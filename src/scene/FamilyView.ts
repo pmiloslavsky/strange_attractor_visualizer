@@ -50,6 +50,8 @@ export class FamilyView {
   private readonly tmp = new THREE.Vector3();
   /** Seconds each ball stays knocked out; ≤ 0 once back (down to −REAPPEAR while fading in). */
   private readonly downFor = DEFAULT_FAMILY.map(() => -REAPPEAR);
+  /** 1 right after a throw, decaying to 0. */
+  private readonly pulses = DEFAULT_FAMILY.map(() => 0);
   /** On by default; the tray's eye button or F hides them. */
   visible = true;
 
@@ -81,6 +83,11 @@ export class FamilyView {
   /** Knock ball `i` out (shot down) for `seconds`; it fades back in afterwards. */
   knockOut(i: number, seconds: number) {
     this.downFor[i] = seconds;
+  }
+
+  /** A quick swell of ball `i`, as the cat winds up to throw. */
+  pulse(i: number) {
+    this.pulses[i] = 1;
   }
 
   /** Whether every ball is currently shot down. */
@@ -122,7 +129,9 @@ export class FamilyView {
       if (!sprite.visible) return;
       sprite.position.fromArray(sys.pos, 3 * i);
       const dist = this.tmp.copy(sprite.position).applyMatrix4(this.group.matrixWorld).distanceTo(camera.position);
-      sprite.scale.setScalar(i === ridden ? worldSize * 0.3 : Math.max(worldSize, (MIN_PIXELS * dist) / projScale));
+      const pulse = (this.pulses[i] = Math.max(0, this.pulses[i]! - realDt * 5));
+      const size = i === ridden ? worldSize * 0.3 : Math.max(worldSize, (MIN_PIXELS * dist) / projScale);
+      sprite.scale.setScalar(size * (1 + 0.3 * Math.sin(pulse * Math.PI)));
       sprite.material.opacity = fade * Math.min(1, -down / REAPPEAR);
     });
   }

@@ -406,8 +406,8 @@ export class Panel {
     this.heliButton.setAttribute('aria-label', this.heliButton.title);
     this.weaponsButton.classList.toggle('off', !app.weaponsEnabled);
     this.weaponsButton.title =
-      `Turn ${app.weaponsEnabled ? 'off' : 'on'} the weapons: the A-10's cannon and the Apache's missiles, ` +
-      'fired at the photo balls and at each other (M)';
+      `Turn ${app.weaponsEnabled ? 'off' : 'on'} the weapons: the A-10's cannon, the Apache's missiles ` +
+      "and the cat's knives (M)";
     this.weaponsButton.setAttribute('aria-label', this.weaponsButton.title);
     this.sweep.refresh();
     this.poincare.refresh();

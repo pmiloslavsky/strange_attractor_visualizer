@@ -20,7 +20,7 @@ const SHORTCUTS = [
   ['F', 'Photo balls on/off'],
   ['J', 'A-10 Warthog on/off'],
   ['K', 'Apache helicopter on/off'],
-  ['M', 'Weapons on/off (the aircraft shoot at the photo balls and each other)'],
+  ['M', "Weapons on/off (cannon, missiles, and the cat's knives)"],
   ['D', 'Corner figure on/off (click it: next preset, then next system)'],
   ['S', 'Save screenshot'],
   ['Space', 'Pause'],
