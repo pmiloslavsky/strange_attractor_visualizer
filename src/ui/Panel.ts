@@ -160,6 +160,8 @@ export class Panel {
     this.toggle.title = collapsed ? 'Expand controls' : 'Collapse controls';
     this.toggle.setAttribute('aria-label', this.toggle.title);
     this.updateInset();
+    // While collapsed the picker has no layout to scroll; catch up on opening.
+    if (!collapsed) requestAnimationFrame(() => this.revealActivePick(false));
   }
 
   /** H key: hide every on-screen control, as in the original. */
@@ -224,6 +226,20 @@ export class Panel {
     for (const b of this.picker.querySelectorAll<HTMLElement>('.pick')) {
       b.classList.toggle('active', b.dataset.id === a.id);
     }
+    this.revealActivePick();
+  }
+
+  /**
+   * On narrow screens the picker is one horizontally scrolling row: keep the
+   * current system's tile in view when it changes from elsewhere (keys, the
+   * corner figure). No-op in the desktop grid, where everything fits.
+   */
+  private revealActivePick(smooth = true) {
+    const active = this.picker.querySelector<HTMLElement>('.pick.active');
+    if (!active || this.picker.scrollWidth <= this.picker.clientWidth) return;
+    const p = this.picker.getBoundingClientRect(), t = active.getBoundingClientRect();
+    const left = this.picker.scrollLeft + (t.left - p.left) - (p.width - t.width) / 2;
+    this.picker.scrollTo({ left, behavior: smooth ? 'smooth' : 'auto' });
   }
 
   private buildMain() {
