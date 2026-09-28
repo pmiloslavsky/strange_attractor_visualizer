@@ -102,7 +102,11 @@ export function createFamilyTray(
     syncEye();
   });
 
-  tray.append(reset, eye, input);
+  // The show/hide toggles (this eye, then the aircraft and weapons buttons the
+  // panel adds) start their own row below the photos.
+  const rowBreak = document.createElement('div');
+  rowBreak.className = 'tray-break';
+  tray.append(reset, rowBreak, eye, input);
   // Mouse/touch clicks shouldn't leave focus on a button, or Space (pause)
   // would also re-click it. Keyboard focus via Tab is unaffected.
   tray.addEventListener('pointerup', (e) => (e.target as HTMLElement).blur());
