@@ -85,6 +85,11 @@ export class FamilyView {
     this.downFor[i] = seconds;
   }
 
+  /** Bring back every ball that is shot down (they fade in). */
+  reviveAll() {
+    this.downFor.forEach((d, i) => d > 0 && (this.downFor[i] = 0));
+  }
+
   /** A quick swell of ball `i`, as the cat winds up to throw. */
   pulse(i: number) {
     this.pulses[i] = 1;

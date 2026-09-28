@@ -159,7 +159,10 @@ As in the original, three photo-textured balls ride on the first three
 particles. ○ in the panel's "Photo balls, A-10 & Apache" row (or F) hides or
 shows them. The round thumbnails in that row show the photos. Click one to
 replace it with an image from your computer. Your choice is remembered in this
-browser only and never uploaded, and ↺ restores the original photos.
+browser only and never uploaded. **Restore** brings back the original photos
+and all five riders (the three balls, the A-10 and the Apache), shown and
+alive, even if they were shot down. Showing any of them (◉ ✈ 🚁, or F J K)
+also brings back one that is currently shot down.
 
 Two aircraft fly along particles of their own, staying upright and banking
 into turns:

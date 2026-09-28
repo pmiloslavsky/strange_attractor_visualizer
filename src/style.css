@@ -517,8 +517,13 @@ button {
 
 .family-tray {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+}
+
+.family-tray > * {
+  flex-shrink: 0;
 }
 
 .family-tray button {
@@ -551,6 +556,15 @@ button {
   font-size: 15px;
   line-height: 28px;
   opacity: 0.75;
+}
+
+/* A text pill rather than a round icon button. */
+.family-btn.restore-btn {
+  width: auto;
+  padding: 0 10px;
+  border-radius: 14px;
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .family-btn:hover,

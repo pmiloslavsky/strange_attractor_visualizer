@@ -103,7 +103,7 @@ export class Panel {
     this.buildPicker();
     const photos = el('section', 'photos');
     photos.append(el('div', 'section-label', 'Photo balls, A-10 & Apache'));
-    this.tray = createFamilyTray(app.family, photos, (v) => app.setFamilyVisible(v));
+    this.tray = createFamilyTray(app.family, photos, (v) => app.setFamilyVisible(v), () => app.restoreAll());
     this.jetButton.textContent = '✈';
     this.jetButton.addEventListener('click', () => app.setJetVisible(!app.jetVisible));
     this.heliButton.textContent = '🚁';

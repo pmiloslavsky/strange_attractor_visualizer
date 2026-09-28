@@ -61,6 +61,11 @@ export class Knockout {
     this.downFor = seconds;
   }
 
+  /** Bring it straight back (growing or fading in) if it is down. */
+  revive() {
+    if (this.downFor > 0) this.downFor = 0;
+  }
+
   /** Count down; call once per frame. */
   tick(dt: number) {
     this.downFor = Math.max(-Knockout.REAPPEAR, this.downFor - dt);

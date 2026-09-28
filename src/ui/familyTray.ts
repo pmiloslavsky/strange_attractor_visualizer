@@ -27,13 +27,15 @@ function writeStored(i: number, value: string | null) {
 
 /**
  * Three round thumbnails. Click one to replace that ball's photo with an image
- * from disk; the ↺ button restores the originals; the eye toggles the balls
- * (same as the F key) through `setVisible`.
+ * from disk; Restore brings back the original photos and, through
+ * `onRestore`, everything that was hidden or shot down; the eye toggles the
+ * balls (same as the F key) through `setVisible`.
  */
 export function createFamilyTray(
   family: FamilyView,
   parent: HTMLElement,
   setVisible: (visible: boolean) => void,
+  onRestore: () => void,
 ) {
   const tray = document.createElement('div');
   tray.className = 'family-tray';
@@ -73,14 +75,17 @@ export function createFamilyTray(
   });
 
   const reset = document.createElement('button');
-  reset.className = 'family-btn';
-  reset.textContent = '↺';
-  reset.title = 'Restore the original photos';
+  reset.className = 'family-btn restore-btn';
+  reset.textContent = 'Restore';
+  reset.title = 'Restore: bring back all three photo balls, the A-10 and the Apache, even if shot down, with the original photos';
+  reset.setAttribute('aria-label', reset.title);
   reset.addEventListener('click', () => {
     DEFAULT_FAMILY.forEach((_, i) => {
       writeStored(i, null);
       void loadDefault(i);
     });
+    onRestore();
+    syncEye();
   });
 
   const eye = document.createElement('button');

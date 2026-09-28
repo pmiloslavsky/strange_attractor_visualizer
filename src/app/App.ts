@@ -504,8 +504,19 @@ export class App {
     this.emit();
   }
 
+  /** Showing always brings the balls back, even ones that are currently shot down. */
   setFamilyVisible(visible: boolean) {
     this.family.visible = visible;
+    if (visible) this.family.reviveAll();
+    this.emit();
+  }
+
+  /** Show all five riders and bring back anything shot down. */
+  restoreAll() {
+    this.family.visible = this.jet.visible = this.heli.visible = true;
+    this.family.reviveAll();
+    this.jet.knockout.revive();
+    this.heli.knockout.revive();
     this.emit();
   }
 
@@ -520,6 +531,7 @@ export class App {
 
   setJetVisible(on: boolean) {
     this.jet.visible = on;
+    if (on) this.jet.knockout.revive();
     this.emit();
   }
 
@@ -529,6 +541,7 @@ export class App {
 
   setHeliVisible(on: boolean) {
     this.heli.visible = on;
+    if (on) this.heli.knockout.revive();
     this.emit();
   }
 
