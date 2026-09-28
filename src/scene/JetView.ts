@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { Knockout, UprightFlight } from './flight';
 
 /** Aircraft length as a fraction of the attractor radius. */
 const RELATIVE_LENGTH = 0.107;
@@ -9,7 +10,7 @@ const MIN_PIXELS = 43;
 const BANK_GAIN = 0.35;
 const MAX_BANK = 1.1;
 
-type P2 = [number, number];
+export type P2 = [number, number];
 
 /** Soft radial glow (white center fading to transparent), tinted by the sprite color. */
 export function glowTexture(): THREE.CanvasTexture {
@@ -26,7 +27,7 @@ export function glowTexture(): THREE.CanvasTexture {
 }
 
 /** A closed outline as a THREE.Shape. */
-function shape(points: P2[]): THREE.Shape {
+export function shape(points: P2[]): THREE.Shape {
   const s = new THREE.Shape();
   s.moveTo(...points[0]!);
   for (const p of points.slice(1)) s.lineTo(...p);
@@ -39,7 +40,7 @@ function shape(points: P2[]): THREE.Shape {
  * aircraft) extruded to `thickness` with rounded edges, lying in the XZ plane
  * centered on y = 0.
  */
-function surface(planform: P2[], thickness: number): THREE.BufferGeometry {
+export function surface(planform: P2[], thickness: number): THREE.BufferGeometry {
   const bevel = thickness * 0.45;
   const g = new THREE.ExtrudeGeometry(shape(planform), {
     depth: thickness - 2 * bevel,
@@ -56,7 +57,7 @@ function surface(planform: P2[], thickness: number): THREE.BufferGeometry {
 }
 
 /** A vertical surface: outline (x = along the aircraft, y = height) in the YZ plane. */
-function fin(outline: P2[], thickness: number): THREE.BufferGeometry {
+export function fin(outline: P2[], thickness: number): THREE.BufferGeometry {
   const bevel = thickness * 0.45;
   const g = new THREE.ExtrudeGeometry(shape(outline), {
     depth: thickness - 2 * bevel,
@@ -72,13 +73,13 @@ function fin(outline: P2[], thickness: number): THREE.BufferGeometry {
 }
 
 /** Smoothly sampled (radius, z) profile through control points. */
-function smoothProfile(control: P2[], n: number): P2[] {
+export function smoothProfile(control: P2[], n: number): P2[] {
   const curve = new THREE.SplineCurve(control.map(([r, z]) => new THREE.Vector2(r, z)));
   return curve.getPoints(n).map((v) => [Math.max(0, v.x), v.y]);
 }
 
 /** A body of revolution around +Z from (radius, z) profile points. */
-function revolve(profile: P2[], segments = 48): THREE.BufferGeometry {
+export function revolve(profile: P2[], segments = 48): THREE.BufferGeometry {
   const g = new THREE.LatheGeometry(profile.map(([r, z]) => new THREE.Vector2(r, z)), segments);
   g.rotateX(Math.PI / 2); // lathe axis +Y → +Z
   return g;
@@ -101,20 +102,17 @@ export class JetView {
   readonly body = new THREE.Group();
   /** Add to Stage.scene. */
   readonly flames = new THREE.Group();
-  /** Add to Stage.overlay, next to `body`. */
-  readonly lights = new THREE.Group();
   visible = true;
+  /** Shot down by the Apache: gone for a while, then back. */
+  readonly knockout = new Knockout();
+  /** World length as drawn last frame (for hit tests and explosion size). */
+  size = 1;
 
   private readonly outer: THREE.Mesh[] = [];
   private readonly inner: THREE.Mesh[] = [];
-  private readonly light = new THREE.DirectionalLight('#ffffff', 2.2);
   private readonly glowMat: THREE.SpriteMaterial;
   private readonly strobe: THREE.SpriteMaterial;
-  private readonly heading = new THREE.Quaternion();
-  private hasHeading = false;
-  private readonly lastForward = new THREE.Vector3(0, 0, 1);
-  private readonly lastRight = new THREE.Vector3(1, 0, 0);
-  private bank = 0;
+  private readonly flight = new UprightFlight(BANK_GAIN, MAX_BANK);
   private time = 0;
   private flicker = [1, 1];
   /** Smoothed 0–1 throttle. */
@@ -292,9 +290,6 @@ export class JetView {
       this.flames.add(s);
     }
 
-    // Lights only affect the airframe's materials (everything else in the overlay is unlit).
-    // They live beside the body, not inside it, so its scale and rotation don't move them.
-    this.lights.add(new THREE.HemisphereLight('#dfe9ff', '#1a2233', 0.9), this.light, this.light.target);
   }
 
   /** Whether the aircraft was drawn this frame. */
@@ -344,37 +339,23 @@ export class JetView {
     /** 0 = slowest typical speed on this attractor, 1 = fastest. */
     throttle: number;
   }) {
-    const show = opts.show && this.visible;
-    this.body.visible = this.flames.visible = this.lights.visible = show;
-    if (!show || opts.worldDir.lengthSq() < 1e-20) return;
     const dt = Math.max(opts.realDt, 1e-4);
+    this.knockout.tick(dt);
+    const show = opts.show && this.visible && !this.knockout.down;
+    this.body.visible = this.flames.visible = show;
+    if (!show || opts.worldDir.lengthSq() < 1e-20) return;
     this.time += dt;
-
-    // Upright frame: forward along the flow, right = up × forward, up = forward × right.
-    const forward = opts.worldDir.clone().normalize();
-    const right = new THREE.Vector3(0, 1, 0).cross(forward);
-    if (right.lengthSq() < 1e-6) right.copy(this.lastRight); // flying straight up or down
-    right.normalize();
-    const up = forward.clone().cross(right);
-    // Bank into turns: yaw rate about our up axis (positive = turning right).
-    const yawRate = this.hasHeading ? this.lastForward.clone().cross(forward).dot(up) / dt : 0;
-    const targetBank = THREE.MathUtils.clamp(-yawRate * BANK_GAIN, -MAX_BANK, MAX_BANK);
-    this.bank += (targetBank - this.bank) * Math.min(1, dt * 4);
-    this.lastForward.copy(forward);
-    this.lastRight.copy(right);
-    const target = new THREE.Quaternion()
-      .setFromRotationMatrix(new THREE.Matrix4().makeBasis(right, up, forward))
-      .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), this.bank));
-    if (!this.hasHeading) this.heading.copy(target);
-    else this.heading.slerp(target, 1 - Math.exp(-dt * 10));
-    this.hasHeading = true;
+    const heading = this.flight.update(opts.worldDir, dt);
 
     const dist = this.tmp.copy(opts.worldPos).distanceTo(opts.camera.position);
     const world = opts.radius * RELATIVE_LENGTH;
-    const scale = opts.small ? world * 0.5 : Math.max(world, (MIN_PIXELS * dist) / opts.projScale);
+    const full = opts.small ? world * 0.5 : Math.max(world, (MIN_PIXELS * dist) / opts.projScale);
+    // Coming back after being shot down: grow in.
+    const scale = full * Math.max(1e-3, this.knockout.presence);
+    this.size = full;
     for (const g of [this.body, this.flames]) {
       g.position.copy(opts.worldPos);
-      g.quaternion.copy(this.heading);
+      g.quaternion.copy(heading);
       g.scale.setScalar(scale);
     }
 
@@ -397,10 +378,5 @@ export class JetView {
     // Tail strobe: a short double flash about once a second.
     const phase = this.time % 1.2;
     this.strobe.opacity = (phase < 0.06 || (phase > 0.14 && phase < 0.2) ? 1 : 0) * opts.fade;
-
-    // Key light from over the camera's shoulder, so the side we see is lit.
-    const toCamera = this.tmp.copy(opts.camera.position).sub(opts.worldPos).normalize();
-    this.light.position.copy(opts.worldPos).addScaledVector(toCamera, scale * 10).add(new THREE.Vector3(0, scale * 6, 0));
-    this.light.target.position.copy(opts.worldPos);
   }
 }

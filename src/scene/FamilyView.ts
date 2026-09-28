@@ -13,10 +13,10 @@ export const DEFAULT_FAMILY = [
 ] as const;
 
 const TEXTURE_SIZE = 256;
-/** Ball diameter as a fraction of the attractor radius (matches the original screenshots). */
-const RELATIVE_SIZE = 0.08;
+/** Ball diameter as a fraction of the attractor radius (3/4 of the original screenshots' size). */
+const RELATIVE_SIZE = 0.06;
 /** Never draw a ball smaller than this many (drawing-buffer) pixels. */
-const MIN_PIXELS = 36;
+const MIN_PIXELS = 27;
 /** Seconds a ball takes to fade back in after being shot down. */
 const REAPPEAR = 0.8;
 
@@ -50,8 +50,8 @@ export class FamilyView {
   private readonly tmp = new THREE.Vector3();
   /** Seconds each ball stays knocked out; ≤ 0 once back (down to −REAPPEAR while fading in). */
   private readonly downFor = DEFAULT_FAMILY.map(() => -REAPPEAR);
-  /** Off by default; the tray's eye button or F shows them. */
-  visible = false;
+  /** On by default; the tray's eye button or F hides them. */
+  visible = true;
 
   constructor(private readonly sys: ParticleSystem) {
     this.group.rotation.x = -Math.PI / 2; // same model→world transform as AttractorView
@@ -83,7 +83,12 @@ export class FamilyView {
     this.downFor[i] = seconds;
   }
 
-  /** Whether ball `i` is on screen and not knocked out: something the A-10 can shoot at. */
+  /** Whether every ball is currently shot down. */
+  get allDown(): boolean {
+    return this.downFor.every((d) => d > 0);
+  }
+
+  /** Whether ball `i` is on screen and not knocked out: something the aircraft can shoot at. */
   isTarget(i: number): boolean {
     const sprite = this.sprites[i];
     return !!sprite && sprite.visible && this.downFor[i]! <= 0;

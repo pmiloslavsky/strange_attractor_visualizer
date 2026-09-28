@@ -11,6 +11,10 @@ import { SectionView } from '../scene/SectionView';
 import { AxesView } from '../scene/AxesView';
 import { JetView } from '../scene/JetView';
 import { CannonView } from '../scene/CannonView';
+import { HeliView } from '../scene/HeliView';
+import { MissileView } from '../scene/MissileView';
+import { Effects } from '../scene/Effects';
+import { KNOCKOUT_SECONDS, type Target } from '../scene/combat';
 import { ParticleSystem, type SeedMode } from '../simulation/ParticleSystem';
 import type { ColorMode } from '../scene/shaders';
 
@@ -43,10 +47,11 @@ type FrameFit = {
  * which way is up on screen (model +y).
  */
 const TOP_VIEW_DIR = new THREE.Vector3(0, 1, 0.02).normalize();
-/** The jet rides the particle after the three photo balls (0–2). */
+/** The jet rides the particle after the three photo balls (0–2), and the helicopter the next. */
 export const JET_PARTICLE = 3;
-/** Seconds a photo ball stays gone after the A-10 shoots it down. */
-const KNOCKOUT_SECONDS = 10;
+export const HELI_PARTICLE = 4;
+/** Riders the camera can ride with: three photo balls, the A-10 and the Apache. */
+export const RIDERS = 5;
 /** Minimum particle count for the basin demo, so the pattern reads clearly. */
 const BASIN_PARTICLES = 4000;
 
@@ -70,8 +75,22 @@ export class App {
   private readonly axes = new AxesView();
   /** The A-10 flying along particle JET_PARTICLE. */
   private readonly jet = new JetView();
-  /** The A-10's cannon: now and then shoots down a photo ball. */
-  private readonly cannon = new CannonView();
+  /** The Apache flying along particle HELI_PARTICLE. */
+  private readonly heli = new HeliView();
+  /** Explosions, sparks and smoke shared by both aircraft's weapons. */
+  private readonly effects = new Effects();
+  /** The A-10's cannon: now and then shoots at a photo ball or the Apache. */
+  private readonly cannon = new CannonView(this.effects);
+  /** The Apache's missiles: now and then fired at a photo ball or the A-10. */
+  private readonly missiles = new MissileView(this.effects);
+  private readonly lights = new THREE.Group();
+  private readonly keyLight = new THREE.DirectionalLight('#ffffff', 2.2);
+  /** What each weapon may shoot at (the ridden rider is skipped per frame). */
+  private cannonTargets: Target[] = [];
+  private missileTargets: Target[] = [];
+  private ballTargets: Target[] = [];
+  /** Called when the last photo ball is shot down. */
+  onMassacre?: () => void;
   private sectionEnabled = false;
   private sectionKey = '';
   private readonly tweens = new Tweens();
@@ -106,10 +125,13 @@ export class App {
     this.chaos = new LyapunovMeter(this.sys);
     this.sectionView = new SectionView(this.section);
     this.view.group.add(this.sectionView.group, this.axes.group);
-    this.stage.overlay.add(this.jet.body, this.jet.lights);
+    this.stage.overlay.add(this.jet.body, this.heli.body, this.missiles.bodies, this.lights);
     this.jet.setEnvironment(this.stage.renderer, this.stage.overlay);
-    this.stage.scene.add(this.jet.flames, this.cannon.group);
-    this.cannon.onKill = (i) => this.family.knockOut(i, KNOCKOUT_SECONDS);
+    // Aircraft and missile lighting: soft sky/ground fill plus a key light from
+    // over the camera's shoulder (aimed each frame), so the side we see is lit.
+    this.lights.add(new THREE.HemisphereLight('#dfe9ff', '#1a2233', 0.9), this.keyLight, this.keyLight.target);
+    this.stage.scene.add(this.jet.flames, this.heli.glows, this.cannon.group, this.missiles.glows, this.effects.group);
+    this.buildTargets();
     this.resetSection();
     this.view.setStyle({ particleSize: this.sys.attractor.particleSize });
     this.stage.scene.add(this.view.group);
@@ -148,6 +170,7 @@ export class App {
     this.sweep = null;
     this.stopRide(false); // the switch frames the camera itself
     this.cannon.reset();
+    this.missiles.reset();
     clearTimeout(this.reanalyzeTimer);
     await this.tweens.run(250, (k) => (this.view.fade = 1 - k));
     if (this.countBeforeBasins !== undefined) {
@@ -241,6 +264,17 @@ export class App {
     const current = this.presetIndex();
     const next = ((current >= 0 ? current : this.lastPreset) + 1) % n;
     void this.applyPreset(this.attractor.examples[next]!);
+  }
+
+  /**
+   * Step through every preset of every system: the next preset here, or after
+   * the last one, the next system (wrapping from the last back to the first).
+   */
+  nextShowcase() {
+    const current = this.presetIndex();
+    const at = current >= 0 ? current : this.lastPreset;
+    if (at < this.attractor.examples.length - 1) this.nextPreset();
+    else void this.switchTo(ATTRACTORS[(ATTRACTORS.indexOf(this.attractor) + 1) % ATTRACTORS.length]!);
   }
 
   /** Tween all parameters to a preset, so the attractor morphs instead of jumping. */
@@ -352,7 +386,7 @@ export class App {
 
   // --- Ride along --------------------------------------------------------------
 
-  /** Index of the particle the camera is riding with (0–2 photo balls, 3 the A-10), or null. */
+  /** Index of the particle the camera is riding with (0–2 photo balls, 3 the A-10, 4 the Apache), or null. */
   ride: number | null = null;
   private rideLook = new THREE.Vector3();
   private rideAutoRotate = false;
@@ -484,44 +518,113 @@ export class App {
     this.emit();
   }
 
-  /** Whether the A-10 shoots at the photo balls now and then (only while both are shown). */
-  get cannonEnabled(): boolean {
-    return this.cannon.enabled;
+  get heliVisible(): boolean {
+    return this.heli.visible;
   }
 
-  setCannonEnabled(on: boolean) {
-    this.cannon.enabled = on;
-    if (!on) this.cannon.reset();
+  setHeliVisible(on: boolean) {
+    this.heli.visible = on;
     this.emit();
   }
 
-  /** Fire a burst now, at the next ball ahead of the nose (for demos and testing). */
-  fireCannon() {
-    this.cannon.fireSoon();
+  /**
+   * Whether the aircraft fight: the A-10's cannon and the Apache's missiles,
+   * fired now and then at the photo balls and at each other.
+   */
+  get weaponsEnabled(): boolean {
+    return this.cannon.enabled;
   }
 
-  /** Fly the jet along its particle, nose along the flow direction from the equations. */
-  private syncJet(realDt: number) {
-    const i = JET_PARTICLE;
+  setWeaponsEnabled(on: boolean) {
+    this.cannon.enabled = this.missiles.enabled = on;
+    if (!on) {
+      this.cannon.reset();
+      this.missiles.reset();
+    }
+    this.emit();
+  }
+
+  /** Fire both weapons at the next chance (for demos and testing). */
+  fireNow() {
+    this.cannon.fireSoon();
+    this.missiles.fireSoon();
+  }
+
+  /** Everything that can be shot down, and who may shoot at what. */
+  private buildTargets() {
+    const { family, jet, heli } = this;
+    this.ballTargets = Array.from({ length: family.count }, (_, i) => ({
+      alive: () => family.isTarget(i),
+      position: (t?: THREE.Vector3) => family.worldPosition(i, t),
+      size: () => family.worldSize(i),
+      photo: () => family.texture(i),
+      kill: () => {
+        family.knockOut(i, KNOCKOUT_SECONDS);
+        if (family.allDown) this.onMassacre?.();
+      },
+    }));
+    const aircraft = (craft: JetView | HeliView): Target => ({
+      alive: () => craft.flying,
+      position: (t = new THREE.Vector3()) => t.copy(craft.body.position),
+      // Hit radius and explosion scale: a bit over half the airframe's length.
+      size: () => craft.size * 0.6,
+      photo: () => null,
+      kill: () => craft.knockout.knockOut(KNOCKOUT_SECONDS),
+    });
+    this.cannonTargets = [...this.ballTargets, aircraft(heli)];
+    this.missileTargets = [...this.ballTargets, aircraft(jet)];
+  }
+
+  /** Targets minus whatever the camera is riding with (index as in RIDERS order). */
+  private notRidden(targets: Target[], ownRiders: number[]): Target[] {
+    if (this.ride === null) return targets;
+    const k = ownRiders.indexOf(this.ride);
+    return k < 0 ? targets : targets.filter((_, j) => j !== k);
+  }
+
+  /** Fly the aircraft along their particles, nose along the flow direction from the equations. */
+  private syncAircraft(realDt: number) {
     const { pos, params, attractor, count } = this.sys;
-    const show = count > i;
-    const d: [number, number, number] = [0, 0, 0];
-    if (show) attractor.derivative(pos[3 * i]!, pos[3 * i + 1]!, pos[3 * i + 2]!, params, d);
-    // Throttle: the jet's speed within this attractor's typical range (same scale as speed coloring).
-    const [lo, hi] = this.sys.speedRange;
-    const throttle = (Math.hypot(...d) - lo) / (hi - lo || 1);
-    this.jet.sync({
-      throttle,
-      show,
-      worldPos: this.view.modelToWorld(show ? [pos[3 * i]!, pos[3 * i + 1]!, pos[3 * i + 2]!] : [0, 0, 0]),
-      worldDir: new THREE.Vector3(...d).applyQuaternion(this.view.group.quaternion),
+    const common = {
       radius: this.sys.analysis.radius,
       camera: this.stage.camera,
       projScale: this.view.projScale,
       fade: this.view.fade,
       realDt,
-      small: this.ride === i,
-    });
+    };
+    const place = (i: number) => {
+      const show = count > i;
+      const d: [number, number, number] = [0, 0, 0];
+      if (show) attractor.derivative(pos[3 * i]!, pos[3 * i + 1]!, pos[3 * i + 2]!, params, d);
+      return {
+        show,
+        speed: Math.hypot(...d),
+        worldPos: this.view.modelToWorld(show ? [pos[3 * i]!, pos[3 * i + 1]!, pos[3 * i + 2]!] : [0, 0, 0]),
+        worldDir: new THREE.Vector3(...d).applyQuaternion(this.view.group.quaternion),
+        small: this.ride === i,
+      };
+    };
+    const j = place(JET_PARTICLE);
+    // Throttle: the jet's speed within this attractor's typical range (same scale as speed coloring).
+    const [lo, hi] = this.sys.speedRange;
+    this.jet.sync({ ...common, ...j, throttle: (j.speed - lo) / (hi - lo || 1) });
+    this.heli.sync({ ...common, ...place(HELI_PARTICLE) });
+
+    // Key light from over the camera's shoulder.
+    const { camera, controls } = this.stage;
+    const r = this.sys.analysis.radius;
+    const toCamera = camera.position.clone().sub(controls.target).normalize();
+    this.keyLight.position.copy(controls.target).addScaledVector(toCamera, r * 10).add(new THREE.Vector3(0, r * 6, 0));
+    this.keyLight.target.position.copy(controls.target);
+  }
+
+  /** Let the aircraft shoot: the A-10 at balls and the Apache, the Apache at balls and the A-10. */
+  private syncCombat(realDt: number) {
+    const hold = this.paused || this.switching;
+    const balls = [0, 1, 2];
+    this.cannon.update(realDt, this.jet, this.notRidden(this.cannonTargets, [...balls, HELI_PARTICLE]), hold);
+    this.missiles.update(realDt, this.heli, this.notRidden(this.missileTargets, [...balls, JET_PARTICLE]), hold);
+    this.effects.update(Math.min(realDt, 0.1), this.stage.camera);
   }
 
   get axesVisible(): boolean {
@@ -681,8 +784,8 @@ export class App {
       this.axes.sync(this.sys.analysis);
       this.updateRide(realDt);
       this.family.sync(this.view.fade, this.stage.camera, this.view.projScale, this.ride, realDt);
-      this.syncJet(realDt);
-      this.cannon.update(realDt, this.jet, this.family, this.stage.camera, this.ride, this.paused || this.switching);
+      this.syncAircraft(realDt);
+      this.syncCombat(realDt);
       this.stage.render();
     });
   }

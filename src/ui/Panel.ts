@@ -1,6 +1,6 @@
 import { Pane, type BladeApi, type ListInputBindingApi } from 'tweakpane';
 import { ATTRACTORS, CONTROL_RANGES, type Attractor } from '../attractors';
-import { JET_PARTICLE, LIMITS, type App, type IntegratorName } from '../app/App';
+import { HELI_PARTICLE, JET_PARTICLE, LIMITS, type App, type IntegratorName } from '../app/App';
 import { PALETTE_NAMES, type PaletteName } from '../scene/palettes';
 import { COLOR_MODES, type ColorMode } from '../scene/shaders';
 import { DEFAULT_FAMILY } from '../scene/FamilyView';
@@ -47,7 +47,8 @@ export class Panel {
   private readonly status = el('div', 'status');
   private readonly meter = el('div', 'meter');
   private readonly jetButton = el('button', 'family-btn jet-btn');
-  private readonly cannonButton = el('button', 'family-btn jet-btn');
+  private readonly heliButton = el('button', 'family-btn jet-btn');
+  private readonly weaponsButton = el('button', 'family-btn jet-btn');
   private toggle!: HTMLButtonElement;
   private readonly paramHost = el('div', 'tp-host');
   private readonly mainHost = el('div', 'tp-host');
@@ -101,13 +102,15 @@ export class Panel {
     const body = el('div', 'panel-body');
     this.buildPicker();
     const photos = el('section', 'photos');
-    photos.append(el('div', 'section-label', 'Photo balls & A-10'));
+    photos.append(el('div', 'section-label', 'Photo balls, A-10 & Apache'));
     this.tray = createFamilyTray(app.family, photos, (v) => app.setFamilyVisible(v));
     this.jetButton.textContent = '✈';
     this.jetButton.addEventListener('click', () => app.setJetVisible(!app.jetVisible));
-    this.cannonButton.textContent = '⌖';
-    this.cannonButton.addEventListener('click', () => app.setCannonEnabled(!app.cannonEnabled));
-    this.tray.element.append(this.jetButton, this.cannonButton);
+    this.heliButton.textContent = '🚁';
+    this.heliButton.addEventListener('click', () => app.setHeliVisible(!app.heliVisible));
+    this.weaponsButton.textContent = '⌖';
+    this.weaponsButton.addEventListener('click', () => app.setWeaponsEnabled(!app.weaponsEnabled));
+    this.tray.element.append(this.jetButton, this.heliButton, this.weaponsButton);
 
     const help = el('details', 'shortcuts');
     help.append(el('summary', undefined, 'Keyboard shortcuts'));
@@ -305,6 +308,7 @@ export class Panel {
     const rideOptions: Record<string, number> = { off: -1 };
     DEFAULT_FAMILY.forEach((m, i) => (rideOptions[m.name] = i));
     rideOptions['A-10'] = JET_PARTICLE;
+    rideOptions['Apache'] = HELI_PARTICLE;
     cam
       .addBinding(state, 'ride', { label: 'ride with', options: rideOptions })
       .on('change', guard((v: number) => (v < 0 ? app.stopRide() : app.startRide(v))));
@@ -381,9 +385,14 @@ export class Panel {
     // Say what a click will do, not both options.
     this.jetButton.title = `${app.jetVisible ? 'Hide' : 'Show'} the A-10 Warthog (J)`;
     this.jetButton.setAttribute('aria-label', this.jetButton.title);
-    this.cannonButton.classList.toggle('off', !app.cannonEnabled);
-    this.cannonButton.title = `Turn ${app.cannonEnabled ? 'off' : 'on'} the A-10's cannon: now and then it shoots down a photo ball (M)`;
-    this.cannonButton.setAttribute('aria-label', this.cannonButton.title);
+    this.heliButton.classList.toggle('off', !app.heliVisible);
+    this.heliButton.title = `${app.heliVisible ? 'Hide' : 'Show'} the Apache helicopter (K)`;
+    this.heliButton.setAttribute('aria-label', this.heliButton.title);
+    this.weaponsButton.classList.toggle('off', !app.weaponsEnabled);
+    this.weaponsButton.title =
+      `Turn ${app.weaponsEnabled ? 'off' : 'on'} the weapons: the A-10's cannon and the Apache's missiles, ` +
+      'fired at the photo balls and at each other (M)';
+    this.weaponsButton.setAttribute('aria-label', this.weaponsButton.title);
     this.sweep.refresh();
     this.poincare.refresh();
     const an = app.sys.analysis;

@@ -11,8 +11,9 @@ drag-to-orbit camera controls. A from-scratch web rebuild of the C++/SFML/TGUI
 demo, keeping its seven systems, their parameter tables, and its three photo
 balls riding along the flow. It adds Chua's circuit (the famous double
 scroll), the Newton–Leipnik system (two attractors at once, with particles
-colored by which one they reach), and an A-10 Warthog flying with the
-particles.
+colored by which one they reach), and an A-10 Warthog and an Apache
+helicopter flying with the particles, and taking shots at the photo balls and
+each other.
 
 Static site, no backend. Vite + TypeScript + Three.js.
 
@@ -84,8 +85,8 @@ chaotic:
   in a 2D plot. A periodic loop becomes a single dot and a strange attractor a
   thin fractal curve, which reveals its layered structure. Classic planes are
   preset for Lorenz (z = 27) and Rössler (y = 0).
-- **Ride along.** A chase camera that follows one of the photo balls through
-  the flow. Esc or dragging the view returns to the overview.
+- **Ride along.** A chase camera that follows one of the photo balls or
+  aircraft through the flow. Esc or dragging the view returns to the overview.
 - **Axes.** The original's reference axes: red x, green y, blue z from the
   origin (A, or the Camera folder).
 
@@ -126,7 +127,7 @@ The control panel (a side panel on desktop, a pull-up sheet on phones) has:
 - **Glow**: bloom strength, radius and threshold.
 - **Camera**: auto-rotate and its speed, auto-framing when parameters resize
   the attractor, x/y/z axes, a button to re-frame, and "ride with" a photo
-  ball or the A-10.
+  ball, the A-10 or the Apache.
 - **Capture**: save a PNG screenshot.
 
 Keyboard:
@@ -140,36 +141,50 @@ Keyboard:
 | `[` `]` | Fewer / more particles |
 | `-` `=` | Shorter / longer trails |
 | B | Butterfly effect: restart as one tiny cluster |
-| V | Ride along with a photo ball or the A-10 (again: next one) |
+| V | Ride along with a photo ball, the A-10 or the Apache (again: next one) |
 | Esc | Stop riding |
 | A | Show / hide the x/y/z axes |
 | F | Show / hide the photo balls |
 | J | Show / hide the A-10 Warthog |
-| M | Turn the A-10's cannon on / off |
-| D | Show / hide the little figure in the top-left corner (click him for the next preset) |
+| K | Show / hide the Apache helicopter |
+| M | Turn the weapons on / off |
+| D | Show / hide the little figure in the top-left corner (click him to step through every preset of every system) |
 | S | Save a PNG screenshot |
 | Space | Pause |
 | H | Hide the on-screen UI |
 
-### Photo balls
+### Photo balls, the A-10 and the Apache
 
 As in the original, three photo-textured balls ride on the first three
-particles. They start hidden: ○ in the panel's "Photo balls & A-10" row (or F)
+particles. ○ in the panel's "Photo balls, A-10 & Apache" row (or F) hides or
 shows them. The round thumbnails in that row show the photos. Click one to
 replace it with an image from your computer. Your choice is remembered in this
 browser only and never uploaded, and ↺ restores the original photos.
 
-A fourth rider, an **A-10 Warthog** in dark charcoal, flies along its own
-particle. It stays upright, banks into turns, and its engine exhaust grows
-brighter and longer the faster the flow is moving. (The real A-10 has no
-afterburners; these are for show.) ✈ (or J) toggles it, and "ride with → A-10"
-(or V) puts the camera behind it.
+Two aircraft fly along particles of their own, staying upright and banking
+into turns:
 
-While the photo balls are showing, the A-10 now and then (every 15–30 seconds)
-lines up on one and fires a short burst from its nose cannon. Enough hits blow
-the ball apart in a small fireball, and it stays gone for 10 seconds before
-fading back in. About a third of the bursts miss and streak past. ⌖ (or M)
-turns the cannon off.
+- An **A-10 Warthog** in dark charcoal, whose engine exhaust grows brighter
+  and longer the faster the flow is moving. (The real A-10 has no
+  afterburners; these are for show.) ✈ (or J) shows or hides it.
+- An **AH-64 Apache** in olive drab, tilted nose-down like a real helicopter
+  in forward flight, rotors spinning, with rocket pods and Hellfire missiles
+  on its stub wings and a flashing red beacon. 🚁 (or K) shows or hides it.
+
+"Ride with" in the Camera folder (or V) puts the camera behind either one.
+
+**They fight.** Every 15–30 seconds the A-10 lines up on a photo ball or the
+Apache and fires a burst from its nose cannon; about a third of the bursts miss
+and streak past. The Apache fires pairs of homing missiles at a photo ball or
+the A-10, which drop from the racks, light their motors and curve in on a
+smoke trail; about a quarter lose lock and self-destruct. Whatever is shot
+down blows apart in a small fireball and stays gone for **2 minutes**. When
+all three photo balls are down, the little figure in the corner says so. ⌖
+(or M) turns the weapons off.
+
+| | |
+|:---:|:---:|
+| <img src="docs/screenshots/apache-missiles.jpg" width="420" alt="The Apache firing a pair of missiles, their smoke trails curving toward the photo balls"><br>The Apache fires a pair of Hellfires at a photo ball | <img src="docs/screenshots/a10-cannon.jpg" width="420" alt="The A-10 firing a stream of glowing cannon tracers at the Apache"><br>The A-10 opens up on the Apache with its cannon |
 
 ## Develop
 
@@ -189,7 +204,8 @@ npm run build    # static output in dist/
   multiple attractors), the particle system with its trail ring buffer, and
   the analysis tools: Lyapunov meter, bifurcation diagram, Poincaré section.
 - `src/scene/`: Three.js stage (camera, controls, bloom), trail and particle
-  shaders, palettes, photo balls, the A-10, section plane, axes.
+  shaders, palettes, photo balls, the A-10 and the Apache and their weapons
+  and explosions, section plane, axes.
 - `src/app/`: the `App` class tying simulation, view and camera together; the
   single API the panel and keyboard use.
 - `src/ui/`: the control panel (Tweakpane), sweep and Poincaré sections, and

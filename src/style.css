@@ -37,13 +37,25 @@ button {
 }
 
 /* Tiny figure tucked into the top-left corner, about the size of a picker tile */
-.corner-figure {
+.corner {
   position: fixed;
   top: max(4px, env(safe-area-inset-top));
   left: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.corner[hidden] {
+  display: none;
+}
+
+.corner-figure {
   height: 64px;
   width: auto;
   cursor: pointer;
+  pointer-events: auto;
   user-select: none;
   -webkit-user-drag: none;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
@@ -54,8 +66,24 @@ button {
   transform: scale(0.92);
 }
 
-.corner-figure[hidden] {
-  display: none;
+/* "Massacre!!!" beside the figure when all three photo balls are shot down. */
+.massacre {
+  visibility: hidden;
+  color: #ff2a2a;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 6px rgba(255, 30, 30, 0.8), 0 1px 2px #000;
+  user-select: none;
+}
+
+.massacre.show {
+  animation: massacre-blink 0.5s steps(1, end) 10;
+}
+
+@keyframes massacre-blink {
+  0% { visibility: visible; }
+  50% { visibility: hidden; }
 }
 
 /* --- Panel ---------------------------------------------------------------- */
